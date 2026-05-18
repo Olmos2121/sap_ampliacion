@@ -1,37 +1,31 @@
-# ─────────────────────────────────────────────────────────────────────────────
-# config.py — Configuración central de tipos de material y valores fijos
-# Fuente: Datos_ampliacion_masiva_centros_logisticos.xlsx
-# ─────────────────────────────────────────────────────────────────────────────
+# =============================================================================
+# config.py — Configuración central
+# =============================================================================
 
-# Centros logísticos principales (para ampliación CL)
-CENTROS_LOGISTICOS = {
-    "ZMED": [
-        {"WERKS": "A130", "KOKRS": "AR01", "PRCTR": "AR01021400"},
-        {"WERKS": "A110", "KOKRS": "AR01", "PRCTR": "AR01031200"},
-    ],
-    "ZNOM": [
-        {"WERKS": "A130", "KOKRS": "AR01", "PRCTR": "AR01021400"},
-        {"WERKS": "A120", "KOKRS": "AR01", "PRCTR": "AR01031200"},
-    ],
-    "ZINS": [
-        {"WERKS": "A130", "KOKRS": "AR01", "PRCTR": "AR01021400"},
-        {"WERKS": "A120", "KOKRS": "AR01", "PRCTR": "AR01031200"},
-    ],
-    "ZSER_C": [
-        {"WERKS": "A130", "KOKRS": "AR01", "PRCTR": "AR01021400"},
-        {"WERKS": "A110", "KOKRS": "AR01", "PRCTR": "AR01031200"},
-    ],
-    "ZSER_NC": [
-        {"WERKS": "A130", "KOKRS": "AR01", "PRCTR": "AR01021400"},
-        {"WERKS": "A110", "KOKRS": "AR01", "PRCTR": "AR01031200"},
-    ],
-    "ZCOM": [
-        {"WERKS": "A130", "KOKRS": "AR01", "PRCTR": "AR01021400"},
-    ],
+# ---------------------------------------------------------------------------
+# Opciones de campos con desplegable
+# ---------------------------------------------------------------------------
+OPCIONES = {
+    "EKGRP_ZMED_ZNOM": [f"{i:03d}" for i in range(1, 6)],        # 001-005
+    "EKGRP_ZINS":      ["007"],
+    "EKGRP_ZSER_C":    ["006"],
+    "TAXIM_FULL":      [str(i) for i in range(1, 7)],             # 1-6
+    "TAXIM_6":         ["6"],
+    "TAXIM_1":         ["1"],
+    "KTGRM_ZMED":      ["01", "02"],
+    "KTGRM_ZNOM_ZINS": ["03"],
+    "KTGRM_ZSER":      ["04", "05"],
+    "KTGRM_ZCOM":      ["03"],
+    "SPART_ZMED":      ["S1"],
+    "SPART_ZNOM":      ["S2", "S3"],
+    "SPART_ZINS":      ["S2"],
+    "SPART_ZSER":      ["S4"],
+    "SPART_ZCOM":      ["S2"],
 }
 
-# Mapa de sucursales: centro → sociedad CO + centro de beneficio
-# Fuente: Ampliacion_sucursales.xlsx (los ~70 centros)
+# ---------------------------------------------------------------------------
+# Mapa de centros (sucursales): WERKS → KOKRS / PRCTR
+# ---------------------------------------------------------------------------
 CENTRO_BENEFICIO_MAP = {
     "0002": {"KOKRS": "AR04", "PRCTR": "AR04011100"},
     "0004": {"KOKRS": "AR02", "PRCTR": "AR02011100"},
@@ -104,276 +98,311 @@ CENTRO_BENEFICIO_MAP = {
     "0075": {"KOKRS": "AR04", "PRCTR": "AR04011100"},
     "0076": {"KOKRS": "AR02", "PRCTR": "AR02011100"},
 }
-SOCIEDAD_MAP = CENTRO_BENEFICIO_MAP  # alias
 
-
-# ─────────────────────────────────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
 # Configuración por tipo de material
-# Cada entrada define:
-#   - valores_fijos: dict campo→valor para datos básicos y centro
-#   - vistas_activas: qué columnas "Vista de X" se marcan con X
-#   - cadenas: configuración de org. de ventas / canales
-#   - valoracion: categoría, control de precio, campo precio y valor
-#   - campos_entrada: columnas que el usuario debe traer en su Excel
-#   - campos_modificacion: columnas para el flujo de modificación
-# ─────────────────────────────────────────────────────────────────────────────
-
+# Cada entrada define todo lo necesario para los 3 flujos
+# ---------------------------------------------------------------------------
 TIPOS_MATERIAL = {
+
     "ZMED": {
-        "vistas_basicos": ["B", "V", "C", "MRP", "P", "A", "WM", "CO"],
-        "valores_fijos_basicos": {
-            "MTART": "ZMED",
-            "SPRAS": "ES",
-            "SPART": "S1",
-            "XCHPF": "X",
-            "MTPOS": "NORM",
-            "VOLEH": "CM3",
-            "EKWSL": "1",
-            "TRAGR": "0001",
-            "IPRKZ": "D",
-            "MHDRZ": "270",
-            "SERIAL": "TRAZ",
-            "MSTAE": "/",
-        },
-        "valores_fijos_centro_A130": {
-            "DISMM": "V1", "DISPO": "Z01", "MTVFP": "02",
-            "LADGR": "0001", "EKGRP": "001", "KAUTB": "X",
-            "TAXIM": "6", "DISGR": "0000", "MINBE": "10",
-            "DISLS": "EX", "BSTMI": "1", "BESKZ": "F",
-            "LGFSB": "0040", "PLIFZ": "4",
-        },
-        "valores_fijos_centro_A110": {
-            "MTVFP": "02", "LADGR": "0001", "EKGRP": "001",
-            "KAUTB": "X", "TAXIM": "6", "XCHPF": "X", "SERNP": "TRAZ",
-        },
-        "cadenas": {
-            "org_3001": {"canales": ["30", "40", "50"], "centro": "A130", "MTPOS": "NORM", "KTGRM": "01"},
-            "org_1001": {"canales": ["10", "20", "30", "40", "50"], "centro": "A110", "MTPOS": "NORM", "KTGRM": "01"},
-        },
-        "fiscal": {"TAXM1": "0", "TAXM2": "0"},
-        "prevision": True,
-        "lugares_almacenamiento": {
-            "A130": ["0040", "0041", "0042", "0043"],
-            "A110": ["0010", "0011", "0020", "0021", "0022"],
-        },
-        "area_planificacion": True,
-        "valoracion": [
-            {"BWKEY": "A130", "BKLAS": "3101", "VPRSV": "V", "VERPR": "20", "STPRS": "", "PEINH": "1"},
+        # ── Datos básicos ──────────────────────────────────────────────────
+        "MTART": "ZMED",
+        "SPART": "S1",
+        "XCHPF": "X",          # gestión de lotes
+        "MTPOS": "NORM",
+        "VOLEH": "CM3",
+        "EKWSL": "1",
+        "TRAGR": "0001",
+        "IPRKZ": "D",
+        "MHDRZ": "270",
+        "SERIAL": "TRAZ",
+        # vistas activas en centros logísticos
+        "vistas_CL": ["B","V","C","MRP","P","A","WM","CO","MRPAREA"],
+        # vistas activas en sucursales
+        "vistas_SUC": ["A"],
+        # vistas activas en modificación
+        "vistas_MOD": ["B","C"],
+        # ── Centros logísticos ─────────────────────────────────────────────
+        "CL_centros": [
+            {
+                "WERKS": "A130", "KOKRS": "AR01", "PRCTR": "AR01021400",
+                "DISMM": "V1", "DISPO": "Z01", "MTVFP": "02",
+                "LADGR": "0001", "KAUTB": "X",
+                "DISGR": "0000", "MINBE": "10", "DISLS": "EX",
+                "BSTMI": "1", "BESKZ": "F", "LGFSB": "0040", "PLIFZ": "4",
+                "ekgrp_opciones": OPCIONES["EKGRP_ZMED_ZNOM"],
+                "taxim_opciones": OPCIONES["TAXIM_6"],
+            },
+            {
+                "WERKS": "A110", "KOKRS": "AR01", "PRCTR": "AR01031200",
+                "MTVFP": "02", "LADGR": "0001", "KAUTB": "X",
+                "XCHPF": "X", "SERNP": "TRAZ",
+                "ekgrp_opciones": OPCIONES["EKGRP_ZMED_ZNOM"],
+                "taxim_opciones": OPCIONES["TAXIM_6"],
+            },
+        ],
+        "CL_cadenas": [
+            {"VKORG": "3001", "canales": ["30","40","50"], "DWERK": "A130", "MTPOS": "NORM"},
+            {"VKORG": "1001", "canales": ["10","20","30","40","50"], "DWERK": "A110", "MTPOS": "NORM"},
+        ],
+        "CL_ktgrm_opciones": OPCIONES["KTGRM_ZMED"],
+        "CL_fiscal": {"TAXM1": "0", "TAXM2": "0"},
+        "CL_prevision": True,
+        "CL_lugares": {"A130": ["0040","0041","0042","0043"], "A110": ["0010","0011","0020","0021","0022"]},
+        "CL_area_planif": True,
+        "CL_valoracion": [
+            {"BWKEY": "A130", "BKLAS": "3101", "VPRSV": "V", "VERPR": "20",  "STPRS": "", "PEINH": "1"},
             {"BWKEY": "A110", "BKLAS": "3101", "VPRSV": "V", "VERPR": "200", "STPRS": "", "PEINH": "1"},
         ],
-        "campos_entrada": ["MATNR", "MAKTX", "MATKL", "PRDHA", "VOLUM", "EKGRP_A130", "EKGRP_A110", "TAXIM", "KTGRM"],
-        "campos_modificacion": ["MATNR", "MAKTX", "PRDHA", "VOLUM", "TEXTO_LARGO", "MSTAE"],
+        # ── Sucursales ─────────────────────────────────────────────────────
+        "SUC_datos_centro": False,   # solo almacenamiento, sin campos extra
+        "SUC_valoracion": False,
+        # ── Modificación ───────────────────────────────────────────────────
+        "MOD_campos": ["MAKTX", "PRDHA", "VOLUM", "TEXTO_LARGO", "MSTAE"],
+        "MOD_fijos": {"MTPOS": "NORM", "VOLEH": "CM3"},
     },
 
     "ZNOM": {
-        "vistas_basicos": ["B", "V", "C", "MRP", "P", "A", "WM", "CO"],
-        "valores_fijos_basicos": {
-            "MTART": "ZNOM",
-            "SPRAS": "ES",
-            "SPART": "S2",
-            "MTPOS": "NORM",
-            "VOLEH": "CM3",
-            "EKWSL": "1",
-            "TRAGR": "0001",
-            "IPRKZ": "D",
-            "MHDRZ": "270",
-            "MSTAE": "/",
-        },
-        "valores_fijos_centro_A130": {
-            "DISMM": "V1", "DISPO": "Z01", "MTVFP": "02",
-            "LADGR": "0001", "EKGRP": "001", "KAUTB": "X",
-            "TAXIM": "6", "DISGR": "0000", "MINBE": "10",
-            "DISLS": "EX", "BSTMI": "1", "BESKZ": "F",
-            "LGFSB": "0040", "PLIFZ": "4",
-        },
-        "valores_fijos_centro_A120": {
-            "MTVFP": "02", "LADGR": "0001", "EKGRP": "001",
-            "KAUTB": "X", "TAXIM": "6",
-        },
-        "cadenas": {
-            "org_3001": {"canales": ["30", "40", "50"], "centro": "A130", "MTPOS": "NORM", "KTGRM": "03"},
-            "org_1001": {"canales": ["10", "20", "30", "40", "50"], "centro": "A120", "MTPOS": "NORM", "KTGRM": "03"},
-        },
-        "fiscal": {"TAXM1": "0", "TAXM2": "0"},
-        "prevision": True,
-        "lugares_almacenamiento": {
-            "A130": ["0040", "0041", "0042", "0043"],
-            "A120": ["0030", "0031"],
-        },
-        "area_planificacion": True,
-        "valoracion": [
-            {"BWKEY": "A130", "BKLAS": "3300", "VPRSV": "V", "VERPR": "20", "STPRS": "", "PEINH": "1"},
+        "MTART": "ZNOM",
+        "SPART": "S2",          # puede ser S2 o S3 — el usuario elige
+        "SPART_opciones": ["S2","S3"],
+        "MTPOS": "NORM",
+        "VOLEH": "CM3",
+        "EKWSL": "1",
+        "TRAGR": "0001",
+        "IPRKZ": "D",
+        "MHDRZ": "270",
+        "vistas_CL":  ["B","V","C","MRP","P","A","WM","CO","MRPAREA"],
+        "vistas_SUC": ["A"],
+        "vistas_MOD": ["B","C"],
+        "CL_centros": [
+            {
+                "WERKS": "A130", "KOKRS": "AR01", "PRCTR": "AR01021400",
+                "DISMM": "V1", "DISPO": "Z01", "MTVFP": "02",
+                "LADGR": "0001", "KAUTB": "X",
+                "DISGR": "0000", "MINBE": "10", "DISLS": "EX",
+                "BSTMI": "1", "BESKZ": "F", "LGFSB": "0040", "PLIFZ": "4",
+                "ekgrp_opciones": OPCIONES["EKGRP_ZMED_ZNOM"],
+                "taxim_opciones": OPCIONES["TAXIM_6"],
+            },
+            {
+                "WERKS": "A120", "KOKRS": "AR01", "PRCTR": "AR01031200",
+                "MTVFP": "02", "LADGR": "0001", "KAUTB": "X",
+                "ekgrp_opciones": OPCIONES["EKGRP_ZMED_ZNOM"],
+                "taxim_opciones": OPCIONES["TAXIM_6"],
+            },
+        ],
+        "CL_cadenas": [
+            {"VKORG": "3001", "canales": ["30","40","50"], "DWERK": "A130", "MTPOS": "NORM"},
+            {"VKORG": "1001", "canales": ["10","20","30","40","50"], "DWERK": "A120", "MTPOS": "NORM"},
+        ],
+        "CL_ktgrm_opciones": OPCIONES["KTGRM_ZNOM_ZINS"],
+        "CL_fiscal": {"TAXM1": "0", "TAXM2": "0"},
+        "CL_prevision": True,
+        "CL_lugares": {"A130": ["0040","0041","0042","0043"], "A120": ["0030","0031"]},
+        "CL_area_planif": True,
+        "CL_valoracion": [
+            {"BWKEY": "A130", "BKLAS": "3300", "VPRSV": "V", "VERPR": "20",  "STPRS": "", "PEINH": "1"},
             {"BWKEY": "A120", "BKLAS": "3300", "VPRSV": "V", "VERPR": "200", "STPRS": "", "PEINH": "1"},
         ],
-        "campos_entrada": ["MATNR", "MAKTX", "MATKL", "PRDHA", "VOLUM", "EKGRP_A130", "TAXIM", "KTGRM"],
-        "campos_modificacion": ["MATNR", "MAKTX", "PRDHA", "VOLUM", "TEXTO_LARGO", "MSTAE"],
+        "SUC_datos_centro": False,
+        "SUC_valoracion": False,
+        "MOD_campos": ["MAKTX", "PRDHA", "VOLUM", "TEXTO_LARGO", "MSTAE"],
+        "MOD_fijos": {"MTPOS": "NORM", "VOLEH": "CM3"},
     },
 
     "ZINS": {
-        "vistas_basicos": ["B", "V", "C", "A", "CO"],
-        "valores_fijos_basicos": {
-            "MTART": "ZINS",
-            "SPRAS": "ES",
-            "SPART": "S2",
-            "MTPOS": "NORM",
-            "VOLEH": "CM3",
-            "EKWSL": "1",
-            "TRAGR": "0001",
-            "MSTAE": "/",
-        },
-        "valores_fijos_centro_A130": {
-            "MTVFP": "02", "LADGR": "0001", "EKGRP": "007",
-            "KAUTB": "X", "TAXIM": "1",
-        },
-        "valores_fijos_centro_A120": {
-            "MTVFP": "02", "LADGR": "0001", "EKGRP": "007",
-            "KAUTB": "X", "TAXIM": "1",
-        },
-        "cadenas": {
-            "org_3001": {"canales": ["30", "40", "50"], "centro": "A130", "MTPOS": "NORM", "KTGRM": "03"},
-            "org_1001": {"canales": ["10", "20", "30", "40", "50"], "centro": "A120", "MTPOS": "NORM", "KTGRM": "03"},
-        },
-        "fiscal": {"TAXM1": "1", "TAXM2": "0"},
-        "prevision": False,
-        "lugares_almacenamiento": {
-            "A130": ["0040", "0041", "0042", "0043"],
-            "A120": ["0030", "0031"],
-        },
-        "area_planificacion": False,
-        "valoracion": [
+        "MTART": "ZINS",
+        "SPART": "S2",
+        "MTPOS": "NORM",
+        "VOLEH": "CM3",
+        "EKWSL": "1",
+        "TRAGR": "0001",
+        "vistas_CL":  ["B","V","C","A","CO"],
+        "vistas_SUC": ["A","CO"],
+        "vistas_MOD": ["B"],
+        "CL_centros": [
+            {
+                "WERKS": "A130", "KOKRS": "AR01", "PRCTR": "AR01021400",
+                "MTVFP": "02", "LADGR": "0001", "KAUTB": "X",
+                "ekgrp_opciones": OPCIONES["EKGRP_ZINS"],
+                "taxim_opciones": OPCIONES["TAXIM_FULL"],
+            },
+            {
+                "WERKS": "A120", "KOKRS": "AR01", "PRCTR": "AR01031200",
+                "MTVFP": "02", "LADGR": "0001", "KAUTB": "X",
+                "ekgrp_opciones": OPCIONES["EKGRP_ZINS"],
+                "taxim_opciones": OPCIONES["TAXIM_FULL"],
+            },
+        ],
+        "CL_cadenas": [
+            {"VKORG": "3001", "canales": ["30","40","50"], "DWERK": "A130", "MTPOS": "NORM"},
+            {"VKORG": "1001", "canales": ["10","20","30","40","50"], "DWERK": "A120", "MTPOS": "NORM"},
+        ],
+        "CL_ktgrm_opciones": OPCIONES["KTGRM_ZNOM_ZINS"],
+        "CL_fiscal": {"TAXM1": "1", "TAXM2": "0"},
+        "CL_prevision": False,
+        "CL_lugares": {"A130": ["0040","0041","0042","0043"], "A120": ["0030","0031"]},
+        "CL_area_planif": False,
+        "CL_valoracion": [
             {"BWKEY": "A130", "BKLAS": "3400", "VPRSV": "V", "VERPR": "0.04", "STPRS": "", "PEINH": "1"},
             {"BWKEY": "A120", "BKLAS": "3400", "VPRSV": "V", "VERPR": "0.04", "STPRS": "", "PEINH": "1"},
         ],
-        "campos_entrada": ["MATNR", "MAKTX", "MATKL", "PRDHA", "VOLUM", "TAXIM", "KTGRM"],
-        "campos_modificacion": ["MATNR", "MAKTX", "TEXTO_LARGO", "MSTAE"],
+        "SUC_datos_centro": True,
+        "SUC_ekgrp": "007",
+        "SUC_kautb": "X",
+        "SUC_taxim": "1",
+        "SUC_valoracion": True,
+        "SUC_bklas": "3400", "SUC_vprsv": "V", "SUC_verpr": "0.04", "SUC_peinh": "1",
+        "MOD_campos": ["MAKTX", "TEXTO_LARGO", "MSTAE"],
+        "MOD_fijos": {},
     },
 
     "ZSER_C": {
-        "vistas_basicos": ["B", "V", "C", "CO"],
-        "valores_fijos_basicos": {
-            "MTART": "ZSER",
-            "SPRAS": "ES",
-            "SPART": "S4",
-            "MTPOS": "LEIS",
-            "EKWSL": "1",
-            "MSTAE": "/",
-        },
-        "valores_fijos_centro_A130": {
-            "MTVFP": "KP", "EKGRP": "006", "KAUTB": "X", "TAXIM": "1",
-        },
-        "valores_fijos_centro_A110": {
-            "MTVFP": "KP", "EKGRP": "006", "KAUTB": "X", "TAXIM": "1",
-        },
-        "cadenas": {
-            "org_3001": {"canales": ["30", "40", "50"], "centro": "A130", "MTPOS": "LEIS", "KTGRM": "04"},
-            "org_1001": {"canales": ["10", "20", "30", "40", "50"], "centro": "A110", "MTPOS": "LEIS", "KTGRM": "04"},
-        },
-        "fiscal": {"TAXM1": "1", "TAXM2": "0"},
-        "prevision": False,
-        "lugares_almacenamiento": {},
-        "area_planificacion": False,
-        "valoracion": [
+        "MTART": "ZSER",
+        "SPART": "S4",
+        "MTPOS": "LEIS",
+        "EKWSL": "1",
+        "vistas_CL":  ["B","V","C","CO"],
+        "vistas_SUC": [],
+        "vistas_MOD": ["B"],
+        "CL_centros": [
+            {
+                "WERKS": "A130", "KOKRS": "AR01", "PRCTR": "AR01021400",
+                "MTVFP": "KP", "KAUTB": "X",
+                "ekgrp_opciones": OPCIONES["EKGRP_ZSER_C"],
+                "taxim_opciones": OPCIONES["TAXIM_FULL"],
+            },
+            {
+                "WERKS": "A110", "KOKRS": "AR01", "PRCTR": "AR01031200",
+                "MTVFP": "KP", "KAUTB": "X",
+                "ekgrp_opciones": OPCIONES["EKGRP_ZSER_C"],
+                "taxim_opciones": OPCIONES["TAXIM_FULL"],
+            },
+        ],
+        "CL_cadenas": [
+            {"VKORG": "3001", "canales": ["30","40","50"], "DWERK": "A130", "MTPOS": "LEIS"},
+            {"VKORG": "1001", "canales": ["10","20","30","40","50"], "DWERK": "A110", "MTPOS": "LEIS"},
+        ],
+        "CL_ktgrm_opciones": OPCIONES["KTGRM_ZSER"],
+        "CL_fiscal": {"TAXM1": "1", "TAXM2": "0"},
+        "CL_prevision": False,
+        "CL_lugares": {},
+        "CL_area_planif": False,
+        "CL_valoracion": [
             {"BWKEY": "A130", "BKLAS": "3233", "VPRSV": "S", "VERPR": "", "STPRS": "4", "PEINH": "1"},
             {"BWKEY": "A110", "BKLAS": "3233", "VPRSV": "S", "VERPR": "", "STPRS": "4", "PEINH": "1"},
         ],
-        "campos_entrada": ["MATNR", "MAKTX", "MATKL", "PRDHA", "TAXIM", "KTGRM"],
-        "campos_modificacion": ["MATNR", "MAKTX", "TEXTO_LARGO", "MSTAE"],
+        "SUC_datos_centro": False,
+        "SUC_valoracion": False,
+        "MOD_campos": ["MAKTX", "TEXTO_LARGO", "MSTAE"],
+        "MOD_fijos": {},
     },
 
     "ZSER_NC": {
-        "vistas_basicos": ["B", "V", "CO"],
-        "valores_fijos_basicos": {
-            "MTART": "ZSER",
-            "SPRAS": "ES",
-            "SPART": "S4",
-            "MTPOS": "LEIS",
-            "MSTAE": "/",
-        },
-        "valores_fijos_centro_A130": {
-            "TAXIM": "1",
-        },
-        "valores_fijos_centro_A110": {
-            "TAXIM": "1",
-        },
-        "cadenas": {
-            "org_3001": {"canales": ["30", "40", "50"], "centro": "A130", "MTPOS": "LEIS", "KTGRM": "04"},
-            "org_1001": {"canales": ["10", "20", "30", "40", "50"], "centro": "A110", "MTPOS": "LEIS", "KTGRM": "04"},
-        },
-        "fiscal": {"TAXM1": "1", "TAXM2": "0"},
-        "prevision": False,
-        "lugares_almacenamiento": {},
-        "area_planificacion": False,
-        "valoracion": [
+        "MTART": "ZSER",
+        "SPART": "S4",
+        "MTPOS": "LEIS",
+        "vistas_CL":  ["B","V","CO"],
+        "vistas_SUC": [],
+        "vistas_MOD": ["B"],
+        "CL_centros": [
+            {
+                "WERKS": "A130", "KOKRS": "AR01", "PRCTR": "AR01021400",
+                "taxim_opciones": OPCIONES["TAXIM_FULL"],
+            },
+            {
+                "WERKS": "A110", "KOKRS": "AR01", "PRCTR": "AR01031200",
+                "taxim_opciones": OPCIONES["TAXIM_FULL"],
+            },
+        ],
+        "CL_cadenas": [
+            {"VKORG": "3001", "canales": ["30","40","50"], "DWERK": "A130", "MTPOS": "LEIS"},
+            {"VKORG": "1001", "canales": ["10","20","30","40","50"], "DWERK": "A110", "MTPOS": "LEIS"},
+        ],
+        "CL_ktgrm_opciones": OPCIONES["KTGRM_ZSER"],
+        "CL_fiscal": {"TAXM1": "1", "TAXM2": "0"},
+        "CL_prevision": False,
+        "CL_lugares": {},
+        "CL_area_planif": False,
+        "CL_valoracion": [
             {"BWKEY": "A130", "BKLAS": "3233", "VPRSV": "S", "VERPR": "", "STPRS": "4", "PEINH": "1"},
             {"BWKEY": "A110", "BKLAS": "3233", "VPRSV": "S", "VERPR": "", "STPRS": "4", "PEINH": "1"},
         ],
-        "campos_entrada": ["MATNR", "MAKTX", "MATKL", "PRDHA", "TAXIM", "KTGRM"],
-        "campos_modificacion": ["MATNR", "MAKTX", "TEXTO_LARGO", "MSTAE"],
+        "SUC_datos_centro": False,
+        "SUC_valoracion": False,
+        "MOD_campos": ["MAKTX", "TEXTO_LARGO", "MSTAE"],
+        "MOD_fijos": {},
     },
 
     "ZNOA": {
-        "vistas_basicos": ["B", "C", "CO"],
-        "valores_fijos_basicos": {
-            "MTART": "ZNOA",
-            "SPRAS": "ES",
-            "MTPOS": "NLAG",
-            "MSTAE": "/",
-        },
-        "valores_fijos_centro_A130": {"EKGRP": "006", "KAUTB": "X", "TAXIM": "1"},
-        "valores_fijos_centro_A110": {"EKGRP": "006", "KAUTB": "X", "TAXIM": "1"},
-        "valores_fijos_centro_A120": {"EKGRP": "006", "KAUTB": "X", "TAXIM": "1"},
-        "cadenas": None,
-        "fiscal": None,
-        "prevision": False,
-        "lugares_almacenamiento": {},
-        "area_planificacion": False,
-        "valoracion": [
+        "MTART": "ZNOA",
+        "MTPOS": "NLAG",
+        "vistas_CL":  ["B","C","CO"],
+        "vistas_SUC": [],
+        "vistas_MOD": ["B"],
+        "CL_centros": [
+            {"WERKS": "A110", "EKGRP": "006", "KAUTB": "X", "taxim_opciones": OPCIONES["TAXIM_FULL"]},
+            {"WERKS": "A120", "EKGRP": "006", "KAUTB": "X", "taxim_opciones": OPCIONES["TAXIM_FULL"]},
+            {"WERKS": "A130", "EKGRP": "006", "KAUTB": "X", "taxim_opciones": OPCIONES["TAXIM_FULL"]},
+        ],
+        "CL_cadenas": None,
+        "CL_fiscal": None,
+        "CL_prevision": False,
+        "CL_lugares": {},
+        "CL_area_planif": False,
+        "CL_valoracion": [
             {"BWKEY": "A110", "BKLAS": "3507", "VPRSV": "V", "VERPR": "1", "STPRS": "", "PEINH": "1"},
             {"BWKEY": "A120", "BKLAS": "3507", "VPRSV": "V", "VERPR": "1", "STPRS": "", "PEINH": "1"},
             {"BWKEY": "A130", "BKLAS": "3507", "VPRSV": "V", "VERPR": "1", "STPRS": "", "PEINH": "1"},
         ],
-        "campos_entrada": ["MATNR", "MAKTX", "MATKL", "PRDHA", "TAXIM"],
-        "campos_modificacion": ["MATNR", "MAKTX", "TEXTO_LARGO", "MSTAE"],
+        "SUC_datos_centro": False,
+        "SUC_valoracion": False,
+        "MOD_campos": ["MAKTX", "TEXTO_LARGO", "MSTAE"],
+        "MOD_fijos": {},
     },
 
     "ZCOM": {
-        "vistas_basicos": ["B", "V", "A"],
-        "valores_fijos_basicos": {
-            "MTART": "ZCOM",
-            "SPRAS": "ES",
-            "SPART": "S2",
-            "MTPOS": "ERLA",
-            "TRAGR": "0001",
-            "MSTAE": "/",
-        },
-        "valores_fijos_centro_A130": {
-            "MTVFP": "KP", "KOKRS": "AR01", "PRCTR": "AR01021400",
-            "LADGR": "0001",
-        },
-        "cadenas": {
-            "org_3001": {"canales": ["30", "40", "50"], "centro": "A130", "MTPOS": "ERLA", "KTGRM": "03"},
-        },
-        "fiscal": {"TAXM1": "1", "TAXM2": "0"},
-        "prevision": False,
-        "lugares_almacenamiento": {
-            "A130": ["0040", "0041", "0042", "0043"],
-        },
-        "area_planificacion": False,
-        "valoracion": [],  # sin datos de valoración en ZCOM
-        "campos_entrada": ["MATNR", "MAKTX", "MATKL", "PRDHA", "VOLUM", "TAXIM", "KTGRM"],
-        "campos_modificacion": ["MATNR", "MAKTX", "TEXTO_LARGO", "MSTAE"],
+        "MTART": "ZCOM",
+        "SPART": "S2",
+        "MTPOS": "ERLA",
+        "TRAGR": "0001",
+        "vistas_CL":  ["B","V","A"],
+        "vistas_SUC": [],
+        "vistas_MOD": ["B"],
+        "CL_centros": [
+            {
+                "WERKS": "A130", "KOKRS": "AR01", "PRCTR": "AR01021400",
+                "MTVFP": "KP", "LADGR": "0001",
+                "taxim_opciones": OPCIONES["TAXIM_FULL"],
+            },
+        ],
+        "CL_cadenas": [
+            {"VKORG": "3001", "canales": ["30","40","50"], "DWERK": "A130", "MTPOS": "ERLA"},
+        ],
+        "CL_ktgrm_opciones": OPCIONES["KTGRM_ZCOM"],
+        "CL_fiscal": {"TAXM1": "1", "TAXM2": "0"},
+        "CL_prevision": False,
+        "CL_lugares": {"A130": ["0040","0041","0042","0043"]},
+        "CL_area_planif": False,
+        "CL_valoracion": [],
+        "SUC_datos_centro": False,
+        "SUC_valoracion": False,
+        "MOD_campos": ["MAKTX", "TEXTO_LARGO", "MSTAE"],
+        "MOD_fijos": {},
     },
 }
 
-# Mapeo de vistas a nombres de columna en la hoja Datos básicos
-VISTA_COLUMNAS = {
-    "B":   "Vista de Datos básicos",
-    "V":   "Vista de Ventas",
-    "C":   "Vista de compras",
-    "MRP": "Vista de MRP",
-    "P":   "Vista de pronóstico",
-    "A":   "Vista de almacenamiento",
-    "WM":  "Vista de WM",
-    "CO":  "Vista de contabilidad",
-    "MRP_AREA": "Asignar área MRP",
+# Nombres de columna para las vistas (fila 1 del .txt)
+VISTA_NOMBRES = {
+    "B":       "Vista de Datos básicos",
+    "V":       "Vista de Ventas",
+    "C":       "Vista de compras",
+    "MRP":     "Vista de MRP",
+    "P":       "Vista de pronóstico",
+    "A":       "Vista de almacenamiento",
+    "WM":      "Vista de WM",
+    "CO":      "Vista de contabilidad",
+    "MRPAREA": "Asignar área MRP",
 }
