@@ -9,9 +9,9 @@ OPCIONES = {
     "EKGRP_ZMED_ZNOM": [f"{i:03d}" for i in range(1, 6)],        # 001-005
     "EKGRP_ZINS":      ["007"],
     "EKGRP_ZSER_C":    ["006"],
-    "TAXIM_FULL":      [str(i) for i in range(1, 7)],             # 1-6
-    "TAXIM_6":         ["6"],
-    "TAXIM_1":         ["1"],
+    "TAXIM_FULL":      [str(i) for i in range(1, 8)],             # 1-7
+    "TAXIM_6":         [str(i) for i in range(1, 8)],             # 1-7 (mismo rango completo)
+    "TAXIM_1":         [str(i) for i in range(1, 8)],             # 1-7
     "KTGRM_ZMED":      ["01", "02"],
     "KTGRM_ZNOM_ZINS": ["03"],
     "KTGRM_ZSER":      ["04", "05"],

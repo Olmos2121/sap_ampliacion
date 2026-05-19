@@ -1,0 +1,337 @@
+@import url('https://fonts.googleapis.com/css2?family=72:wght@400;700&family=Noto+Sans:wght@300;400;500;600&display=swap');
+
+/* ── Reset y base ─────────────────────────────────────────── */
+html, body, [class*="css"] {
+    font-family: '72', 'Noto Sans', 'Arial', sans-serif;
+    font-size: 13px;
+    color: #32363a;
+    background: #f7f7f7;
+}
+.stApp { background: #f7f7f7; }
+
+/* ── Barra superior SAP ───────────────────────────────────── */
+.sap-shell {
+    background: #0a6ed1;
+    color: white;
+    padding: 0 1.2rem;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: -1rem -1rem 0 -1rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
+.sap-shell-title {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: white;
+}
+.sap-shell-sub {
+    font-size: 11px;
+    opacity: 0.75;
+    color: white;
+}
+
+/* ── Breadcrumb ───────────────────────────────────────────── */
+.sap-breadcrumb {
+    background: #fff;
+    border-bottom: 1px solid #d9d9d9;
+    padding: 0.4rem 1.2rem;
+    font-size: 11px;
+    color: #6a6d70;
+    margin: 0 -1rem;
+}
+.sap-breadcrumb a { color: #0a6ed1; text-decoration: none; }
+
+/* ── Page title ───────────────────────────────────────────── */
+.sap-page-title {
+    background: #fff;
+    border-bottom: 1px solid #d9d9d9;
+    padding: 0.8rem 1.2rem 0.7rem;
+    margin: 0 -1rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.sap-page-title h1 {
+    font-size: 18px;
+    font-weight: 400;
+    color: #32363a;
+    margin: 0;
+    line-height: 1.2;
+}
+.sap-page-title .sap-obj-type {
+    font-size: 11px;
+    color: #6a6d70;
+    font-weight: 400;
+}
+
+/* ── Toolbar ──────────────────────────────────────────────── */
+.sap-toolbar {
+    background: #fff;
+    border: 1px solid #d9d9d9;
+    border-radius: 4px;
+    padding: 0.4rem 0.8rem;
+    margin-bottom: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* ── Buttons SAP style ────────────────────────────────────── */
+.stButton > button {
+    font-family: '72', 'Arial', sans-serif !important;
+    font-size: 13px !important;
+    border-radius: 4px !important;
+    height: 32px !important;
+    padding: 0 1rem !important;
+    transition: all 0.1s !important;
+    white-space: nowrap !important;
+}
+.stButton > button[kind="primary"] {
+    background: #0a6ed1 !important;
+    border: 1px solid #0a6ed1 !important;
+    color: white !important;
+    font-weight: 600 !important;
+}
+.stButton > button[kind="primary"]:hover {
+    background: #085caf !important;
+    border-color: #085caf !important;
+}
+.stButton > button[kind="secondary"] {
+    background: #fff !important;
+    border: 1px solid #bfbfbf !important;
+    color: #32363a !important;
+}
+.stButton > button[kind="secondary"]:hover {
+    background: #f2f2f2 !important;
+    border-color: #0a6ed1 !important;
+    color: #0a6ed1 !important;
+}
+
+/* ── Form section (ObjectPageSection) ────────────────────── */
+.sap-section {
+    background: #fff;
+    border: 1px solid #d9d9d9;
+    border-radius: 4px;
+    margin-bottom: 0.8rem;
+    overflow: hidden;
+}
+.sap-section-header {
+    background: #f2f2f2;
+    border-bottom: 1px solid #d9d9d9;
+    padding: 0.45rem 1rem;
+    font-size: 13px;
+    font-weight: 600;
+    color: #32363a;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.sap-section-body { padding: 0.8rem 1rem; }
+
+/* ── Field rows ───────────────────────────────────────────── */
+.sap-field-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    gap: 0;
+}
+.sap-field-label {
+    width: 180px;
+    min-width: 180px;
+    text-align: right;
+    padding-right: 0.6rem;
+    font-size: 12px;
+    color: #6a6d70;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.sap-field-value {
+    flex: 1;
+    font-size: 13px;
+    color: #32363a;
+}
+.sap-tag {
+    display: inline-block;
+    background: #e8f0fb;
+    color: #0a6ed1;
+    border: 1px solid #c0d4f0;
+    border-radius: 3px;
+    padding: 0.1rem 0.5rem;
+    font-size: 12px;
+    font-family: 'Courier New', monospace;
+    margin-right: 0.25rem;
+}
+.sap-tag-gray {
+    background: #f2f2f2;
+    color: #6a6d70;
+    border-color: #d9d9d9;
+}
+
+/* ── Tabs SAP style ───────────────────────────────────────── */
+.stTabs [data-baseweb="tab-list"] {
+    background: #fff;
+    border-bottom: 2px solid #d9d9d9;
+    padding: 0;
+    gap: 0;
+    margin: 0;
+}
+.stTabs [data-baseweb="tab"] {
+    font-family: '72', 'Arial', sans-serif;
+    font-size: 13px;
+    font-weight: 400;
+    color: #6a6d70;
+    border-bottom: 3px solid transparent !important;
+    padding: 0.55rem 1.2rem !important;
+    background: transparent !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    transition: color 0.15s, border-color 0.15s;
+}
+.stTabs [data-baseweb="tab"]:hover {
+    color: #0a6ed1;
+    background: #f5f8fe !important;
+}
+.stTabs [aria-selected="true"] {
+    color: #0a6ed1 !important;
+    font-weight: 600 !important;
+    border-bottom-color: #0a6ed1 !important;
+}
+.stTabs [data-baseweb="tab-panel"] {
+    background: #f7f7f7;
+    padding: 1rem 0 0 0;
+    border: none;
+}
+
+/* ── Data editor SAP style ────────────────────────────────── */
+.stDataEditor > div {
+    border: 1px solid #d9d9d9 !important;
+    border-radius: 4px !important;
+    font-size: 13px !important;
+}
+.stDataEditor [data-testid="glideDataEditor"] {
+    font-family: '72', 'Arial', sans-serif !important;
+    font-size: 13px !important;
+}
+
+/* ── Inputs ───────────────────────────────────────────────── */
+.stTextInput > div > div > input,
+.stTextArea > div > div > textarea,
+.stSelectbox > div > div {
+    background: #fff !important;
+    border: 1px solid #bfbfbf !important;
+    border-radius: 4px !important;
+    color: #32363a !important;
+    font-size: 13px !important;
+    font-family: '72', 'Arial', sans-serif !important;
+}
+.stTextInput > div > div > input:focus,
+.stTextArea > div > div > textarea:focus {
+    border-color: #0a6ed1 !important;
+    box-shadow: 0 0 0 2px rgba(10,110,209,0.15) !important;
+    outline: none !important;
+}
+
+/* ── Status bar ───────────────────────────────────────────── */
+.sap-status-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 1rem;
+    background: #fff;
+    border: 1px solid #d9d9d9;
+    border-radius: 4px;
+    margin-bottom: 0.8rem;
+    font-size: 12px;
+}
+.sap-status-ok    { color: #107e3e; font-weight: 600; }
+.sap-status-warn  { color: #e9730c; font-weight: 600; }
+.sap-status-error { color: #bb0000; font-weight: 600; }
+.sap-status-icon  { font-size: 15px; }
+
+/* ── Context info bar ─────────────────────────────────────── */
+.sap-ctx-bar {
+    background: #fff;
+    border: 1px solid #d9d9d9;
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    font-size: 12px;
+    color: #6a6d70;
+}
+.sap-ctx-val { font-weight: 600; color: #32363a; }
+.sap-ctx-sep { color: #d9d9d9; }
+
+/* ── Selection cards ─────────────────────────────────────── */
+.sap-sel-card {
+    background: #fff;
+    border: 1px solid #d9d9d9;
+    border-radius: 4px;
+    padding: 0.8rem 1rem;
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    margin-bottom: 0.5rem;
+}
+.sap-sel-card:hover {
+    border-color: #0a6ed1;
+    box-shadow: 0 0 0 1px #0a6ed1;
+}
+.sap-sel-card.active {
+    border-color: #0a6ed1;
+    background: #f5f8fe;
+    box-shadow: 0 0 0 1px #0a6ed1;
+}
+.sap-sel-title { font-weight: 600; color: #32363a; font-size: 13px; }
+.sap-sel-desc  { color: #6a6d70; font-size: 11px; margin-top: 0.2rem; }
+
+/* ── Table header in section ─────────────────────────────── */
+.sap-table-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #6a6d70;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.4rem;
+    padding-bottom: 0.3rem;
+    border-bottom: 1px solid #e8e8e8;
+}
+
+/* ── Apply-all button ────────────────────────────────────── */
+.apply-all-hint {
+    font-size: 11px;
+    color: #6a6d70;
+    margin-top: 0.3rem;
+    font-style: italic;
+}
+
+/* ── Messages ────────────────────────────────────────────── */
+.stSuccess { border-radius: 4px; font-size: 13px; }
+.stError   { border-radius: 4px; font-size: 13px; }
+.stWarning { border-radius: 4px; font-size: 13px; }
+.stInfo    { border-radius: 4px; font-size: 13px; }
+
+/* ── Expander SAP style ──────────────────────────────────── */
+.streamlit-expanderHeader {
+    background: #f2f2f2 !important;
+    border: 1px solid #d9d9d9 !important;
+    border-radius: 4px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: #32363a !important;
+}
+
+/* ── Caption / small text ────────────────────────────────── */
+.stCaption { font-size: 11px !important; color: #6a6d70 !important; }
+
+/* Remove streamlit padding */
+.block-container { padding-top: 0 !important; }
+div[data-testid="stVerticalBlock"] > div { gap: 0.5rem; }
