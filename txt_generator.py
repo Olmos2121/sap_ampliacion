@@ -110,7 +110,8 @@ def gen_datos_basicos(materiales: list[dict], cfg: dict, vistas_key: str) -> byt
 # ─────────────────────────────────────────────────────────────────────────────
 # DATOS DE CENTRO — centros logísticos
 # ─────────────────────────────────────────────────────────────────────────────
-def gen_datos_centro_CL(materiales: list[dict], cfg: dict) -> bytes:
+def gen_datos_centro_CL(materiales: list[dict], cfg: dict, centros: list = None) -> bytes:
+    centros = centros or [c["WERKS"] for c in cfg.get("CL_centros", [])]
     h_nombres = [
         "Número de producto","Centro","Tipo de MRP","Planificador de necesidades",
         "Verificación de disponibilidad","Sociedad CO","Centro de beneficio",
@@ -129,7 +130,7 @@ def gen_datos_centro_CL(materiales: list[dict], cfg: dict) -> bytes:
 
     filas = []
     for m in materiales:
-        for centro in cfg["CL_centros"]:
+        for centro in [c for c in cfg["CL_centros"] if centros is None or c["WERKS"] in centros]:
             werks = centro["WERKS"]
             # EKGRP y TAXIM pueden ser por-material (el formulario los guarda con clave WERKS)
             ekgrp = m.get(f"EKGRP_{werks}", centro.get("EKGRP",""))
@@ -205,7 +206,7 @@ def gen_datos_centro_SUC(materiales: list[dict], cfg: dict) -> bytes:
 # ─────────────────────────────────────────────────────────────────────────────
 # CADENAS DE DISTRIBUCIÓN
 # ─────────────────────────────────────────────────────────────────────────────
-def gen_cadenas(materiales: list[dict], cfg: dict) -> bytes | None:
+def gen_cadenas(materiales: list[dict], cfg: dict, centros: list = None) -> bytes | None:
     if not cfg.get("CL_cadenas"):
         return None
 
@@ -219,7 +220,7 @@ def gen_cadenas(materiales: list[dict], cfg: dict) -> bytes | None:
     filas = []
     for m in materiales:
         ktgrm = m.get("KTGRM", cfg.get("CL_ktgrm_opciones",[""])[0])
-        for cadena in cfg["CL_cadenas"]:
+        for cadena in [c for c in cfg["CL_cadenas"] if centros is None or c["DWERK"] in centros]:
             for canal in cadena["canales"]:
                 filas.append([
                     m["MATNR"],
@@ -284,7 +285,7 @@ def gen_datos_prevision(materiales: list[dict], cfg: dict) -> bytes | None:
 # ─────────────────────────────────────────────────────────────────────────────
 # LUGARES DE ALMACENAMIENTO
 # ─────────────────────────────────────────────────────────────────────────────
-def gen_lugares_almacenamiento(materiales: list[dict], cfg: dict) -> bytes | None:
+def gen_lugares_almacenamiento(materiales: list[dict], cfg: dict, centros: list = None) -> bytes | None:
     lugares = cfg.get("CL_lugares", {})
     if not lugares:
         return None
@@ -295,6 +296,8 @@ def gen_lugares_almacenamiento(materiales: list[dict], cfg: dict) -> bytes | Non
     filas = []
     for m in materiales:
         for werks, ubicaciones in lugares.items():
+            if centros is not None and werks not in centros:
+                continue
             for lgort in ubicaciones:
                 filas.append([m["MATNR"], werks, lgort])
 
@@ -336,11 +339,11 @@ def gen_area_planificacion(materiales: list[dict], cfg: dict) -> bytes | None:
 # ─────────────────────────────────────────────────────────────────────────────
 # DATOS DE VALORACIÓN
 # ─────────────────────────────────────────────────────────────────────────────
-def gen_datos_valoracion(materiales: list[dict], cfg: dict, clave: str = "CL_valoracion") -> bytes | None:
+def gen_datos_valoracion(materiales: list[dict], cfg: dict, clave: str = "CL_valoracion", centros: list = None) -> bytes | None:
     val_cfg = cfg.get(clave, [])
     if not val_cfg:
         return None
-
+    
     h_nombres = [
         "Número de producto","Área de valoración","Categoría de valoración",
         "Control de precios","Moneda","Media variable de precio de inventario",
@@ -350,7 +353,7 @@ def gen_datos_valoracion(materiales: list[dict], cfg: dict, clave: str = "CL_val
 
     filas = []
     for m in materiales:
-        for v in val_cfg:
+        for v in [x for x in val_cfg if centros is None or x["BWKEY"] in centros]:
             filas.append([
                 m["MATNR"], v["BWKEY"], v["BKLAS"], v["VPRSV"],
                 "ARS", v.get("VERPR",""), v.get("STPRS",""), v.get("PEINH","1"),

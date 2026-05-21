@@ -10,6 +10,7 @@ def init_state():
         "materiales": {},
         "n_mats": 0,
         "configurado": False,
+        "centros_seleccionados": [],
     }
 
     for k, v in defaults.items():
@@ -90,3 +91,4 @@ def reset_state():
     st.session_state.n_mats      = 0
     st.session_state.flujo       = None
     st.session_state.tipo_mat    = None
+    st.session_state.centros_seleccionados = []

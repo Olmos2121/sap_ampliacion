@@ -52,6 +52,9 @@ def generar_zip(flujo: str, cfg: dict) -> tuple[bytes, dict]:
     los empaqueta en un ZIP en memoria y lo devuelve.
     Retorna (bytes_del_zip, dict_nombre→bytes_del_txt).
     """
+    import streamlit as st
+    centros = st.session_state.get("centros_seleccionados", None) or None
+
     n    = get_n()
     mats = get_mats()
     lista = construir_lista(n, mats, cfg)
@@ -64,23 +67,26 @@ def generar_zip(flujo: str, cfg: dict) -> tuple[bytes, dict]:
             lista, cfg, "vistas_CL"
         )
 
-        archivos["Datos_de_centro.txt"] = gen_datos_centro_CL(lista, cfg)
+        archivos["Datos_de_centro.txt"] = gen_datos_centro_CL(lista, cfg, centros)
 
-        for nombre, fn in [
-            ("Cadenas_de_distribucion.txt",   gen_cadenas),
-            ("Clasificacion_fiscal.txt",       gen_clasificacion_fiscal),
-            ("Datos_de_prevision.txt",         gen_datos_prevision),
-            ("Lugares_de_almacenamiento.txt",  gen_lugares_almacenamiento),
-            ("Area_planific_nec.txt",          gen_area_planificacion),
-        ]:
-            resultado = fn(lista, cfg)
-            if resultado:
-                archivos[nombre] = resultado
+        r = gen_cadenas(lista, cfg, centros)
+        if r: archivos["Cadenas_de_distribucion.txt"] = r
 
-        resultado = gen_datos_valoracion(lista, cfg, "CL_valoracion")
-        if resultado:
-            archivos["Datos_valoracion.txt"] = resultado
+        r = gen_clasificacion_fiscal(lista, cfg)
+        if r: archivos["Clasificacion_fiscal.txt"] = r
 
+        if centros is None or "A130" in centros:
+            r = gen_datos_prevision(lista, cfg)
+            if r: archivos["Datos_de_prevision.txt"] = r
+            r = gen_area_planificacion(lista, cfg)
+            if r: archivos["Area_planific_nec.txt"] = r
+
+        r = gen_lugares_almacenamiento(lista, cfg, centros)
+        if r: archivos["Lugares_de_almacenamiento.txt"] = r
+
+        r = gen_datos_valoracion(lista, cfg, "CL_valoracion", centros)
+        if r: archivos["Datos_valoracion.txt"] = r
+    
     # ── Ampliación sucursales ─────────────────────────────────────────────
     elif flujo == "Ampliación sucursales":
 
@@ -90,9 +96,8 @@ def generar_zip(flujo: str, cfg: dict) -> tuple[bytes, dict]:
 
         archivos["Datos_de_centro.txt"] = gen_datos_centro_SUC(lista, cfg)
 
-        resultado = gen_datos_valoracion_SUC(lista, cfg)
-        if resultado:
-            archivos["Datos_valoracion.txt"] = resultado
+        r = gen_datos_valoracion_SUC(lista, cfg)
+        if r: archivos["Datos_valoracion.txt"] = r
 
     # ── Modificación datos básicos ────────────────────────────────────────
     elif flujo == "Modificación datos básicos":

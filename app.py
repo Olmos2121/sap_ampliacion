@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 
 from config import TIPOS_MATERIAL, CENTRO_BENEFICIO_MAP
+from config import TIPOS_MATERIAL, CENTRO_BENEFICIO_MAP, CENTROS_DISPONIBLES
 
 from ui.helpers import load_css
 from ui.layout import (
@@ -65,28 +66,17 @@ if not st.session_state.configurado:
     breadcrumb("Nueva operación")
     page_title("Gestión de materiales", "Nueva operación masiva")
 
-    col_left, col_right = st.columns([1, 1], gap="large")
+    # ── Fila superior: 3 selectores ──────────────────────────────────────
+    col_op, col_mat, col_centros = st.columns([1, 1, 1], gap="medium")
 
-    # ── Tipo de operación ──────────────────────────────────────────────────
-    with col_left:
-
-        section_open("Tipo de operación", "📋")
-
+    # ── Columna 1: Tipo de operación ──────────────────────────────────────
+    with col_op:
+        section_open("1. Tipo de operación", "📋")
         FLUJOS = {
-            "Ampliación centros logísticos": {
-                "icon": "🏭",
-                "desc": "Amplía materiales a A110 / A120 / A130. Genera hasta 8 vistas.",
-            },
-            "Ampliación sucursales": {
-                "icon": "🏪",
-                "desc": "Amplía materiales a los ~70 centros de sucursales. Genera 2–3 vistas.",
-            },
-            "Modificación datos básicos": {
-                "icon": "✏️",
-                "desc": "Modifica campos de materiales ya existentes. Genera 1 vista.",
-            },
+            "Ampliación centros logísticos": {"icon": "🏭", "desc": "Hasta 8 vistas"},
+            "Ampliación sucursales":         {"icon": "🏪", "desc": "2–3 vistas"},
+            "Modificación datos básicos":    {"icon": "✏️",  "desc": "1 vista"},
         }
-
         for nombre, info in FLUJOS.items():
             activo = st.session_state.flujo == nombre
             if st.button(
@@ -96,94 +86,114 @@ if not st.session_state.configurado:
                 type="primary" if activo else "secondary",
             ):
                 if st.session_state.flujo != nombre:
-                    st.session_state.flujo    = nombre
-                    st.session_state.tipo_mat = None
-                    st.session_state.materiales = {}
-                    st.session_state.n_mats   = 0
+                    st.session_state.flujo              = nombre
+                    st.session_state.tipo_mat           = None
+                    st.session_state.materiales         = {}
+                    st.session_state.n_mats             = 0
+                    st.session_state.centros_seleccionados = []
                 st.rerun()
             st.caption(info["desc"])
-
         section_close()
 
-    # ── Tipo de material y MATNR ───────────────────────────────────────────
-    with col_right:
-
+    # ── Columna 2: Tipo de material ───────────────────────────────────────
+    with col_mat:
+        section_open("2. Tipo de material", "🏷️")
         if st.session_state.flujo:
-
             TIPOS_POR_FLUJO = {
                 "Ampliación centros logísticos": list(TIPOS_MATERIAL.keys()),
                 "Ampliación sucursales":         ["ZMED", "ZNOM", "ZINS"],
                 "Modificación datos básicos":    list(TIPOS_MATERIAL.keys()),
             }
             tipos_disp = TIPOS_POR_FLUJO[st.session_state.flujo]
-
-            section_open("Tipo de material", "🏷️")
-
-            cols_t = st.columns(min(len(tipos_disp), 4))
+            cols_t = st.columns(2)
             for i, t in enumerate(tipos_disp):
                 activo = st.session_state.tipo_mat == t
-                if cols_t[i % 4].button(
+                if cols_t[i % 2].button(
                     t.replace("_", " "),
                     key=f"chip_{t}",
                     type="primary" if activo else "secondary",
                     use_container_width=True,
                 ):
                     if st.session_state.tipo_mat != t:
-                        st.session_state.tipo_mat   = t
-                        st.session_state.materiales = {}
-                        st.session_state.n_mats     = 0
+                        st.session_state.tipo_mat           = t
+                        st.session_state.materiales         = {}
+                        st.session_state.n_mats             = 0
+                        st.session_state.centros_seleccionados = []
                     st.rerun()
-
-            section_close()
-
-            if st.session_state.tipo_mat:
-
-                section_open("Números de material (MATNR)", "🔢")
-
-                st.caption(
-                    "Copiá y pegá desde Excel (una columna, un número por línea). "
-                    "También podés escribirlos manualmente."
-                )
-
-                texto_matnr = st.text_area(
-                    label="matnr_input",
-                    label_visibility="collapsed",
-                    placeholder="4000039050\n4000038251\n4000038252\n...",
-                    height=160,
-                    key="input_matnr",
-                )
-
-                lineas_preview = [
-                    l.strip()
-                    for l in texto_matnr.replace("\t", "\n").splitlines()
-                    if l.strip()
-                ]
-
-                c1, c2 = st.columns([2, 3])
-                if c1.button("Continuar →", type="primary", use_container_width=True):
-                    if not lineas_preview:
-                        st.error("Ingresá al menos un número de material.")
-                    else:
-                        cfg_tmp = TIPOS_MATERIAL[st.session_state.tipo_mat]
-                        inicializar_materiales(lineas_preview, cfg_tmp)
-                        st.session_state.configurado = True
-                        st.rerun()
-
-                c2.caption(f"{len(lineas_preview)} material(es) detectado(s)")
-
-                section_close()
-
         else:
-            section_open("Tipo de material", "🏷️")
-            st.markdown(
-                '<div style="color:#6a6d70;font-size:13px;padding:0.5rem 0">'
-                "Seleccioná un tipo de operación para continuar.</div>",
-                unsafe_allow_html=True,
+            st.caption("Seleccioná una operación primero.")
+        section_close()
+
+    # ── Columna 3: Centros logísticos ─────────────────────────────────────
+    with col_centros:
+        section_open("3. Centros logísticos", "📍")
+        es_CL = st.session_state.flujo == "Ampliación centros logísticos"
+        if es_CL and st.session_state.tipo_mat:
+            centros_disp = CENTROS_DISPONIBLES.get(st.session_state.tipo_mat, [])
+            st.caption("Seleccioná en qué centros ampliar.")
+            seleccionados = []
+            for centro in centros_disp:
+                activo = centro in st.session_state.centros_seleccionados
+                if st.button(
+                    f"{'✅' if activo else '⬜'}  {centro}",
+                    key=f"btn_centro_{centro}",
+                    use_container_width=True,
+                    type="primary" if activo else "secondary",
+                ):
+                    nuevos = list(st.session_state.centros_seleccionados)
+                    if centro in nuevos:
+                        nuevos.remove(centro)
+                    else:
+                        nuevos.append(centro)
+                    st.session_state.centros_seleccionados = nuevos
+                    st.rerun()
+            if not st.session_state.centros_seleccionados:
+                st.caption("⚠️ Seleccioná al menos un centro.")
+        elif not es_CL and st.session_state.flujo:
+            st.caption("No aplica para este flujo.")
+        else:
+            st.caption("Seleccioná operación y tipo primero.")
+        section_close()
+
+    # ── Fila inferior: MATNR + Continuar ─────────────────────────────────
+    if st.session_state.flujo and st.session_state.tipo_mat:
+        section_open("Números de material (MATNR)", "🔢")
+        st.caption("Copiá y pegá desde Excel (una columna, un número por línea).")
+
+        col_area, col_btn = st.columns([4, 1])
+
+        with col_area:
+            texto_matnr = st.text_area(
+                label="matnr_input",
+                label_visibility="collapsed",
+                placeholder="4000039050\n4000038251\n4000038252\n...",
+                height=120,
+                key="input_matnr",
             )
-            section_close()
+
+        lineas_preview = [
+            l.strip()
+            for l in texto_matnr.replace("\t", "\n").splitlines()
+            if l.strip()
+        ]
+
+        with col_btn:
+            st.markdown("<div style='height:1.5rem'></div>", unsafe_allow_html=True)
+            sin_centros = (
+                st.session_state.flujo == "Ampliación centros logísticos"
+                and not st.session_state.centros_seleccionados
+            )
+            if st.button("Continuar →", type="primary", use_container_width=True,
+                         disabled=sin_centros or not lineas_preview):
+                cfg_tmp = TIPOS_MATERIAL[st.session_state.tipo_mat]
+                inicializar_materiales(lineas_preview, cfg_tmp)
+                st.session_state.configurado = True
+                st.rerun()
+            st.caption(f"{len(lineas_preview)} material(es)")
+
+        section_close()
 
     st.stop()
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PASO 2 — Formulario por vistas
@@ -194,6 +204,7 @@ tipo_mat = st.session_state.tipo_mat
 cfg      = TIPOS_MATERIAL[tipo_mat]
 n        = get_n()
 mats     = get_mats()
+centros_sel = st.session_state.get("centros_seleccionados", [])
 
 # Breadcrumb y título
 breadcrumb(flujo)
@@ -213,7 +224,7 @@ if col_back.button("← Nueva operación", use_container_width=True):
 
 # ─── Tabs ────────────────────────────────────────────────────────────────────
 
-nombres_tabs = tabs_para_flujo(flujo, cfg)
+nombres_tabs = tabs_para_flujo(flujo, cfg, centros_sel)
 tabs = st.tabs(nombres_tabs)
 
 
@@ -309,6 +320,8 @@ if "Datos de centro" in nombres_tabs:
 
             for centro in cfg.get("CL_centros", []):
                 werks = centro["WERKS"]
+                if flujo == "Ampliación centros logísticos" and werks not in centros_sel:
+                    continue
 
                 section_open(f"Centro {werks}", "📍")
 
@@ -400,6 +413,7 @@ if "Cadenas de distribución" in nombres_tabs:
                 "PRODH": "(jerarquía del material)",
             }
             for c in cfg.get("CL_cadenas", [])
+            if not centros_sel or c["DWERK"] in centros_sel
             for canal in c["canales"]
         ]
         if filas_c:
@@ -484,6 +498,7 @@ if "Lugares de almacenamiento" in nombres_tabs:
             {"MATNR": m, "WERKS": w, "LGORT": lg}
             for m in mats.get("MATNR", [])
             for w, locs in lugares.items()
+            if not centros_sel or w in centros_sel
             for lg in locs
         ]
         if filas_l:
@@ -551,6 +566,7 @@ if "Datos de valoración" in nombres_tabs:
                 }
                 for m in mats.get("MATNR", [])
                 for v in val_cfg
+                if not centros_sel or v["BWKEY"] in centros_sel
             ]
             if filas_v:
                 simple_table(filas_v, height=250)

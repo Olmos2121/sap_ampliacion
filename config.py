@@ -23,6 +23,16 @@ OPCIONES = {
     "SPART_ZCOM":      ["S2"],
 }
 
+CENTROS_DISPONIBLES = {
+    "ZMED":    ["A110", "A130"],
+    "ZNOM":    ["A110", "A120", "A130"],
+    "ZINS":    ["A120", "A130"],
+    "ZSER_C":  ["A110", "A130"],
+    "ZSER_NC": ["A110", "A130"],
+    "ZNOA":    ["A110", "A120", "A130"],
+    "ZCOM":    ["A110", "A130"],
+}
+
 # ---------------------------------------------------------------------------
 # Mapa de centros (sucursales): WERKS → KOKRS / PRCTR
 # ---------------------------------------------------------------------------
@@ -192,19 +202,28 @@ TIPOS_MATERIAL = {
                 "ekgrp_opciones": OPCIONES["EKGRP_ZMED_ZNOM"],
                 "taxim_opciones": OPCIONES["TAXIM_6"],
             },
+            {
+                "WERKS": "A110", "KOKRS": "AR01", "PRCTR": "AR01031200",
+                "MTVFP": "02", "LADGR": "0001", "KAUTB": "X",
+                "XCHPF": "X", "SERNP": "TRAZ",
+                "ekgrp_opciones": OPCIONES["EKGRP_ZMED_ZNOM"],
+                "taxim_opciones": OPCIONES["TAXIM_6"],
+            },
         ],
         "CL_cadenas": [
             {"VKORG": "3001", "canales": ["30","40","50"], "DWERK": "A130", "MTPOS": "NORM"},
             {"VKORG": "1001", "canales": ["10","20","30","40","50"], "DWERK": "A120", "MTPOS": "NORM"},
+            {"VKORG": "1001", "canales": ["10","20","30","40","50"], "DWERK": "A110", "MTPOS": "NORM"},
         ],
         "CL_ktgrm_opciones": OPCIONES["KTGRM_ZNOM_ZINS"],
         "CL_fiscal": {"TAXM1": "0", "TAXM2": "0"},
         "CL_prevision": True,
-        "CL_lugares": {"A130": ["0040","0041","0042","0043"], "A120": ["0030","0031"]},
+        "CL_lugares": {"A130": ["0040","0041","0042","0043"], "A120": ["0030","0031"], "A110": ["0010","0011","0020","0021","0022"]},
         "CL_area_planif": True,
         "CL_valoracion": [
             {"BWKEY": "A130", "BKLAS": "3300", "VPRSV": "V", "VERPR": "20",  "STPRS": "", "PEINH": "1"},
             {"BWKEY": "A120", "BKLAS": "3300", "VPRSV": "V", "VERPR": "200", "STPRS": "", "PEINH": "1"},
+            {"BWKEY": "A110", "BKLAS": "3300", "VPRSV": "V", "VERPR": "200", "STPRS": "", "PEINH": "1"},
         ],
         "SUC_datos_centro": False,
         "SUC_valoracion": False,

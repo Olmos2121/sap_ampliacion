@@ -1,16 +1,14 @@
-def tabs_para_flujo(flujo: str, cfg: dict) -> list[str]:
-    """
-    Retorna la lista de nombres de tabs que deben mostrarse
-    según el flujo y la configuración del tipo de material.
-    """
+def tabs_para_flujo(flujo: str, cfg: dict, centros: list = None) -> list[str]:
+    centros = centros or []
 
     if flujo == "Ampliación centros logísticos":
         t = ["Datos básicos", "Datos de centro"]
         if cfg.get("CL_cadenas"):     t.append("Cadenas de distribución")
         if cfg.get("CL_fiscal"):      t.append("Clasificación fiscal")
-        if cfg.get("CL_prevision"):   t.append("Datos de previsión")
+        # Previsión y Área MRP solo si A130 está seleccionado
+        if cfg.get("CL_prevision")   and "A130" in centros: t.append("Datos de previsión")
         if cfg.get("CL_lugares"):     t.append("Lugares de almacenamiento")
-        if cfg.get("CL_area_planif"): t.append("Área planif. MRP")
+        if cfg.get("CL_area_planif") and "A130" in centros: t.append("Área planif. MRP")
         if cfg.get("CL_valoracion"):  t.append("Datos de valoración")
         return t
 
