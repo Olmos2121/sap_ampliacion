@@ -29,6 +29,16 @@ def get_val(campo: str, idx: int, default: Any = "") -> Any:
     d = get_mats().get(campo, [])
     return d[idx] if idx < len(d) else default
 
+def _limpiar(value: Any) -> Any:
+    """Elimina saltos de línea y normaliza espacios entre palabras."""
+    if isinstance(value, str):
+        # Reemplazar cualquier salto de línea por espacio
+        value = value.replace("\r\n", " ").replace("\r", " ").replace("\n", " ")
+        # Colapsar múltiples espacios consecutivos en uno solo
+        while "  " in value:
+            value = value.replace("  ", " ")
+        return value.strip()
+    return value
 
 def set_val(campo: str, idx: int, value: Any):
     m = get_mats()
@@ -36,11 +46,11 @@ def set_val(campo: str, idx: int, value: Any):
         m[campo] = [""] * get_n()
     while len(m[campo]) < get_n():
         m[campo].append("")
-    m[campo][idx] = value
+    m[campo][idx] = _limpiar(value)
 
 
 def fill_all(campo: str, value: Any):
-    get_mats()[campo] = [value] * get_n()
+    get_mats()[campo] = [_limpiar(value)] * get_n()
 
 
 def resolver_mstae(idx: int) -> str:

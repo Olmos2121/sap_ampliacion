@@ -57,6 +57,111 @@ def bloque_fijos(titulo: str, datos: dict):
 # Tabla editable por campo
 # ─────────────────────────────────────────────────────────────────────────────
 
+def pegar_en_bloque(label: str, campo: str, n: int):
+    """Modal de pegado en bloque estilo Excel."""
+    key_open  = f"bloque_open_{campo}"
+    key_texto = f"bloque_texto_{campo}"
+    key_apply = f"bloque_applied_{campo}"
+
+    if key_open not in st.session_state:
+        st.session_state[key_open] = False
+
+    if st.button("📋 Pegar en bloque", key=f"btn_bloque_{campo}"):
+        st.session_state[key_open] = not st.session_state[key_open]
+        st.rerun()
+
+    if st.session_state[key_open]:
+        st.markdown("""
+        <style>
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.45);
+            z-index: 9998;
+        }
+        .modal-box {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 520px;
+            background: #fff;
+            border-radius: 6px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.22);
+            z-index: 9999;
+            overflow: hidden;
+        }
+        .modal-header {
+            background: #0a6ed1;
+            color: white;
+            padding: 0.7rem 1.2rem;
+            font-size: 13px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .modal-body {
+            padding: 1rem 1.2rem 0.5rem;
+            font-size: 12px;
+            color: #6a6d70;
+        }
+        .modal-footer {
+            padding: 0.6rem 1.2rem 1rem;
+            display: flex;
+            gap: 0.5rem;
+        }
+        </style>
+        <div class="modal-overlay"></div>
+        <div class="modal-box">
+          <div class="modal-header">📋 Pegado en bloque</div>
+          <div class="modal-body">
+            Pegá un valor por línea, en el mismo orden que los materiales.<br>
+            Las líneas vacías se ignoran.
+          </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Contenedor del textarea y botones encima del overlay
+        with st.container():
+            st.markdown("""
+            <style>
+            /* Empujar el widget de Streamlit dentro del modal visual */
+            div[data-testid="stVerticalBlock"]:has(
+                > div > div[data-testid="stTextArea"]
+            ) {
+                position: fixed;
+                top: calc(50% - 80px);
+                left: 50%;
+                transform: translate(-50%, 0);
+                width: 490px;
+                z-index: 10000;
+                background: transparent;
+            }
+            </style>
+            """, unsafe_allow_html=True)
+
+            texto = st.text_area(
+                label=f"bloque_{campo}",
+                label_visibility="collapsed",
+                placeholder="\n".join([f"Valor {i+1}" for i in range(min(n, 4))] + ["..."]),
+                height=220,
+                key=key_texto,
+            )
+
+            c1, c2, _ = st.columns([2, 2, 4])
+            if c1.button("✅ Aplicar", key=f"apply_bloque_{campo}", type="primary"):
+                lineas = [l.strip() for l in texto.splitlines() if l.strip()]
+                for i, linea in enumerate(lineas):
+                    if i < n:
+                        set_val(campo, i, linea)
+                st.session_state[key_open] = False
+                st.rerun()
+
+            if c2.button("✖ Cancelar", key=f"cancel_bloque_{campo}"):
+                st.session_state[key_open] = False
+                st.rerun()
+
 def campo_editable(
     label: str,
     campo: str,
@@ -81,7 +186,13 @@ def campo_editable(
     mats = get_mats()
 
     full_label = f"{label}" + (f" ({tecnico})" if tecnico else "")
-    table_label(full_label)
+
+    col_lbl, col_paste = st.columns([6, 2])
+    col_lbl.markdown(f'<div class="sap-table-label">{full_label}</div>', unsafe_allow_html=True)
+
+    if tipo == "texto":
+        with col_paste:
+            pegar_en_bloque(label, campo, n)
 
     if ayuda:
         st.caption(ayuda)
@@ -128,7 +239,8 @@ def campo_editable(
             },
         )
         for i in range(n):
-            set_val(campo, i, edited.iloc[i][label])
+            v = edited.iloc[i][label]
+            set_val(campo, i, str(v).strip() if v is not None else "")
 
         if n > 1:
             c1, _ = st.columns([2, 6])
@@ -156,7 +268,8 @@ def campo_editable(
     )
     for i in range(n):
         v = edited.iloc[i][label]
-        set_val(campo, i, "" if v is None else str(v))
+        v = "" if v is None else str(v)
+        set_val(campo, i, v.replace("\r\n", " ").replace("\r", " ").replace("\n", " ").strip())
 
     if n > 1:
         c1, _ = st.columns([2, 6])
@@ -170,14 +283,13 @@ def campo_editable(
 # Tabla simple (solo lectura)
 # ─────────────────────────────────────────────────────────────────────────────
 
-def simple_table(data: list[dict] | dict, height: int | None = None):
+def simple_table(data: list[dict] | dict, height: int = None):
     """Muestra un DataFrame de solo lectura a partir de una lista de dicts o dict de listas."""
-    df = pd.DataFrame(data).reset_index(drop=True)
-    # Avoid passing a kwargs dict to st.dataframe to satisfy strict type checkers
+    df = pd.DataFrame(data)
+    kwargs = {"use_container_width": True, "hide_index": True}
     if height is not None:
-        st.dataframe(df, use_container_width=True, height=height)
-    else:
-        st.dataframe(df, use_container_width=True)
+        kwargs["height"] = height
+    st.dataframe(df, **kwargs)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -262,6 +262,19 @@ with tabs[0]:
                     opciones=cfg["SPART_opciones"],
                 )
 
+        if flujo == "Modificación datos básicos":
+            mod_campos = cfg.get("MOD_campos", [])
+            if "PRDHA" in mod_campos:
+                campo_editable(
+                    "Jerarquía de productos", "PRDHA", tecnico="PRDHA",
+                    ayuda="Ej: J010109, J010405.",
+                )
+            if "VOLUM" in mod_campos:
+                campo_editable(
+                    "Volumen", "VOLUM", tipo="numero", tecnico="VOLUM",
+                    ayuda=f"En {cfg.get('VOLEH', 'CM3')}.",
+                )
+
         campo_editable(
             "Texto largo", "TEXTO_LARGO",
             ayuda="Si se deja vacío se usa la descripción (MAKTX).",

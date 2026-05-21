@@ -47,30 +47,61 @@ def gen_datos_basicos(materiales: list[dict], cfg: dict, vistas_key: str) -> byt
         "VOLUM","VOLEH","EKWSL","TRAGR","IPRKZ","MHDRZ","SERIAL","","MSTAE",
     ]
 
+    # Para sucursales/modificacion solo van ciertos campos; el resto queda vacio
+    es_sucursales = vistas_key == "vistas_SUC"
+    es_modificacion = vistas_key == "vistas_MOD"
+
     filas = []
     for m in materiales:
         fila = [m["MATNR"]]
         for v in TODAS_VISTAS:
             fila.append("X" if v in vistas_activas else "")
-        fila += [
-            cfg.get("MTART",""),
-            m.get("MATKL",""),
-            m.get("MAKTX",""),
-            "ES",
-            m.get("SPART", cfg.get("SPART","")),
-            m.get("PRDHA",""),
-            cfg.get("XCHPF",""),
-            cfg.get("MTPOS",""),
-            m.get("VOLUM",""),
-            cfg.get("VOLEH",""),
-            cfg.get("EKWSL",""),
-            cfg.get("TRAGR",""),
-            cfg.get("IPRKZ",""),
-            cfg.get("MHDRZ",""),
-            cfg.get("SERIAL",""),
-            m.get("TEXTO_LARGO", m.get("MAKTX","")),
-            m.get("MSTAE",""),
-        ]
+        if es_sucursales:
+            # Sucursales: solo vista de almacenamiento, resto vacio
+            fila += [""] * 17
+        elif es_modificacion:
+            # Modificacion: solo los campos que el usuario completo, fijos vacios
+            mod_campos = cfg.get("MOD_campos", [])
+            voleh = cfg.get("VOLEH","") if "VOLUM" in mod_campos else ""
+            fila += [
+                "",                                                      # MTART
+                "",                                                      # MAKTL
+                m.get("MAKTX","") if "MAKTX" in mod_campos else "",     # MAKTX
+                "ES" if "MAKTX" in mod_campos else "",                  # SPRAS
+                "",                                                      # SPART
+                m.get("PRDHA","") if "PRDHA" in mod_campos else "",     # PRDHA
+                "",                                                      # XCHPF
+                "",                                                      # MTPOS
+                m.get("VOLUM","") if "VOLUM" in mod_campos else "",     # VOLUM
+                voleh,                                                   # VOLEH
+                "",                                                      # EKWSL
+                "",                                                      # TRAGR
+                "",                                                      # IPRKZ
+                "",                                                      # MHDRZ
+                "",                                                      # SERIAL
+                m.get("TEXTO_LARGO", m.get("MAKTX","")),                # Texto largo
+                m.get("MSTAE",""),                                       # MSTAE
+            ]
+        else:
+            fila += [
+                cfg.get("MTART",""),
+                m.get("MATKL",""),
+                m.get("MAKTX",""),
+                "ES",
+                m.get("SPART", cfg.get("SPART","")),
+                m.get("PRDHA",""),
+                cfg.get("XCHPF",""),
+                cfg.get("MTPOS",""),
+                m.get("VOLUM",""),
+                cfg.get("VOLEH",""),
+                cfg.get("EKWSL",""),
+                cfg.get("TRAGR",""),
+                cfg.get("IPRKZ",""),
+                cfg.get("MHDRZ",""),
+                cfg.get("SERIAL",""),
+                m.get("TEXTO_LARGO", m.get("MAKTX","")),
+                m.get("MSTAE",""),
+            ]
         filas.append(fila)
 
     return _txt(h_nombres, h_tecnicos, filas)

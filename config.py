@@ -389,8 +389,9 @@ TIPOS_MATERIAL = {
         "CL_valoracion": [],
         "SUC_datos_centro": False,
         "SUC_valoracion": False,
-        "MOD_campos": ["MAKTX", "TEXTO_LARGO", "MSTAE"],
+        "MOD_campos": ["MAKTX", "VOLUM", "TEXTO_LARGO", "MSTAE"],
         "MOD_fijos": {},
+        "VOLEH": "CM3",
     },
 }
 
