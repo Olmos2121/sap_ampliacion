@@ -177,6 +177,7 @@ TIPOS_MATERIAL = {
         "MTART": "ZNOM",
         "SPART": "S2",          # puede ser S2 o S3 — el usuario elige
         "SPART_opciones": ["S2","S3"],
+        "XCHPF": "X",          # gestión de lotes
         "MTPOS": "NORM",
         "VOLEH": "CM3",
         "EKWSL": "1",
@@ -199,6 +200,7 @@ TIPOS_MATERIAL = {
             {
                 "WERKS": "A120", "KOKRS": "AR01", "PRCTR": "AR01031200",
                 "MTVFP": "02", "LADGR": "0001", "KAUTB": "X",
+                "XCHPF": "X",
                 "ekgrp_opciones": OPCIONES["EKGRP_ZMED_ZNOM"],
                 "taxim_opciones": OPCIONES["TAXIM_6"],
             },
