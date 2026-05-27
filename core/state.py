@@ -83,6 +83,9 @@ def inicializar_materiales(lineas: list, cfg: dict):
         st.session_state.materiales[f"EKGRP_{werks}"] = [""] * n
         st.session_state.materiales[f"TAXIM_{werks}"] = [""] * n
 
+    if cfg.get("ZNOA_incluye_sucursales_en_CL"):
+        st.session_state.materiales["TAXIM_SUC_znoa"] = ["1"] * n
+
 
 def reset_state():
     """Reinicia toda la sesión para volver al paso 1."""

@@ -202,6 +202,54 @@ def gen_datos_centro_SUC(materiales: list[dict], cfg: dict) -> bytes:
 
     return _txt(h_nombres, h_tecnicos, filas)
 
+def gen_datos_centro_ZNOA(materiales: list[dict], cfg: dict, centros_cl: list = None) -> bytes:
+    from config import CENTRO_BENEFICIO_MAP
+
+    h_nombres = [
+        "Número de producto","Centro","Tipo de MRP","Planificador de necesidades",
+        "Verificación de disponibilidad","Sociedad CO","Centro de beneficio",
+        "Indicador sol.gestión de lotes","Perfil Serie","Grupo de carga",
+        "Grupo de compra","Pedido automático permitido","Indicador de impuestos",
+        "Grupo MRP","Punto de reorganización","Cálculo de tamaño de lote",
+        "Tamaño de lote mínimo","Tamaño de lote máximo","Tamaño de lote fijo",
+        "Clase de aprovisionamiento","Almacén estándar p.aprovisionam.externo",
+        "Hora de entrega planificada",
+    ]
+    h_tecnicos = [
+        "MATNR","WERKS","DISMM","DISPO","MTVFP","KOKRS","PRCTR",
+        "XCHPF","SERNP","LADGR","EKGRP","KAUTB","TAXIM","DISGR",
+        "MINBE","DISLS","BSTMI","BSTMA","BSTFE","BESKZ","LGFSB","PLIFZ",
+    ]
+
+    ekgrp = cfg.get("SUC_ekgrp", "006")
+    kautb = cfg.get("SUC_kautb", "X")
+
+    filas = []
+    for m in materiales:
+        taxim = m.get("TAXIM_SUC_znoa", "1")
+
+        # Centros logísticos seleccionados
+        centros_a_usar = [c["WERKS"] for c in cfg.get("CL_centros", [])
+                          if centros_cl is None or c["WERKS"] in centros_cl]
+        for werks in centros_a_usar:
+            filas.append([
+                m["MATNR"], werks, "","","","","",
+                "","", "",
+                ekgrp, kautb, taxim,
+                "","","","","","","","","",
+            ])
+
+        # Sucursales
+        for werks in CENTRO_BENEFICIO_MAP.keys():
+            filas.append([
+                m["MATNR"], werks, "","","","","",
+                "","","",
+                ekgrp, kautb, taxim,
+                "","","","","","","","","",
+            ])
+
+    return _txt(h_nombres, h_tecnicos, filas)
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CADENAS DE DISTRIBUCIÓN
@@ -361,6 +409,40 @@ def gen_datos_valoracion(materiales: list[dict], cfg: dict, clave: str = "CL_val
 
     return _txt(h_nombres, h_tecnicos, filas)
 
+def gen_datos_valoracion_ZNOA(materiales: list[dict], cfg: dict, centros_cl: list = None) -> bytes:
+    """
+    Genera valoración para ZNOA: centros logísticos seleccionados + las ~70 sucursales.
+    Todos con BKLAS 3507, VPRSV V, VERPR 1.
+    """
+    from config import CENTRO_BENEFICIO_MAP
+
+    h_nombres = [
+        "Número de producto","Área de valoración","Categoría de valoración",
+        "Control de precios","Moneda","Media variable de precio de inventario",
+        "Precio estándar de precio de inventario","Unidad de precio",
+    ]
+    h_tecnicos = ["MATNR","BWKEY","BKLAS","VPRSV","WAERS","VERPR","STPRS ","PEINH"]
+
+    val_cl = [v for v in cfg.get("CL_valoracion",[])
+              if centros_cl is None or v["BWKEY"] in centros_cl]
+
+    filas = []
+    for m in materiales:
+        # Centros logísticos
+        for v in val_cl:
+            filas.append([
+                m["MATNR"], v["BWKEY"], v["BKLAS"], v["VPRSV"],
+                "ARS", v.get("VERPR",""), v.get("STPRS",""), v.get("PEINH","1"),
+            ])
+        # Sucursales
+        for werks in CENTRO_BENEFICIO_MAP.keys():
+            filas.append([
+                m["MATNR"], werks,
+                cfg.get("SUC_bklas",""), cfg.get("SUC_vprsv",""),
+                "ARS", cfg.get("SUC_verpr",""), "", cfg.get("SUC_peinh","1"),
+            ])
+
+    return _txt(h_nombres, h_tecnicos, filas)
 
 def gen_datos_valoracion_SUC(materiales: list[dict], cfg: dict) -> bytes | None:
     """Valoración para sucursales (ZINS): una fila por material × sucursal."""

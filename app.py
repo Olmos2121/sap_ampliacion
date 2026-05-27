@@ -320,7 +320,7 @@ if "Datos de centro" in nombres_tabs:
 
             for centro in cfg.get("CL_centros", []):
                 werks = centro["WERKS"]
-                if flujo == "Ampliación centros logísticos" and werks not in centros_sel:
+                if werks not in centros_sel:
                     continue
 
                 section_open(f"Centro {werks}", "📍")
@@ -349,6 +349,22 @@ if "Datos de centro" in nombres_tabs:
 
                 section_close()
                 st.markdown("")
+
+            # Sucursales ZNOA — fuera del loop, se renderiza una sola vez
+            if cfg.get("ZNOA_incluye_sucursales_en_CL"):
+                section_open("Sucursales (~70 centros)", "🏪")
+                st.caption(
+                    f"Se agregarán {len(CENTRO_BENEFICIO_MAP)} sucursales al mismo archivo. "
+                    "EKGRP = 007 y KAUTB = X son fijos."
+                )
+                campo_editable(
+                    "Indicador de impuestos — Sucursales", "TAXIM_SUC_znoa",
+                    tipo="select",
+                    opciones=[str(i) for i in range(1, 7)],
+                    tecnico="TAXIM",
+                    ayuda="Se aplica a todas las sucursales.",
+                )
+                section_close()
 
         elif flujo == "Ampliación sucursales":
 

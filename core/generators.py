@@ -12,6 +12,8 @@ from txt_generator import (
     gen_area_planificacion,
     gen_datos_valoracion,
     gen_datos_valoracion_SUC,
+    gen_datos_centro_ZNOA,
+    gen_datos_valoracion_ZNOA,
 )
 
 from core.state import get_mats, get_n, resolver_mstae
@@ -67,7 +69,10 @@ def generar_zip(flujo: str, cfg: dict) -> tuple[bytes, dict]:
             lista, cfg, "vistas_CL"
         )
 
-        archivos["Datos_de_centro.txt"] = gen_datos_centro_CL(lista, cfg, centros)
+        if cfg.get("ZNOA_incluye_sucursales_en_CL"):
+            archivos["Datos_de_centro.txt"] = gen_datos_centro_ZNOA(lista, cfg, centros)
+        else:
+            archivos["Datos_de_centro.txt"] = gen_datos_centro_CL(lista, cfg, centros)
 
         r = gen_cadenas(lista, cfg, centros)
         if r: archivos["Cadenas_de_distribucion.txt"] = r
@@ -84,8 +89,11 @@ def generar_zip(flujo: str, cfg: dict) -> tuple[bytes, dict]:
         r = gen_lugares_almacenamiento(lista, cfg, centros)
         if r: archivos["Lugares_de_almacenamiento.txt"] = r
 
-        r = gen_datos_valoracion(lista, cfg, "CL_valoracion", centros)
-        if r: archivos["Datos_valoracion.txt"] = r
+        if cfg.get("ZNOA_incluye_sucursales_en_CL"):
+            archivos["Datos_valoracion.txt"] = gen_datos_valoracion_ZNOA(lista, cfg, centros)
+        else:
+            r = gen_datos_valoracion(lista, cfg, "CL_valoracion", centros)
+            if r: archivos["Datos_valoracion.txt"] = r
     
     # ── Ampliación sucursales ─────────────────────────────────────────────
     elif flujo == "Ampliación sucursales":
