@@ -257,7 +257,7 @@ def campo_editable(
     col_cfg = {
         "MATNR": st.column_config.TextColumn("MATNR", width=200),
         label: (
-            st.column_config.NumberColumn(label, width=250)
+            st.column_config.NumberColumn(label, width=250, format="%.2f")
             if tipo == "numero"
             else st.column_config.TextColumn(label, width=350)
         ),

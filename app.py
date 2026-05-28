@@ -200,7 +200,7 @@ if not st.session_state.configurado:
         if st.session_state.flujo:
             TIPOS_POR_FLUJO = {
                 "Ampliación centros logísticos": list(TIPOS_MATERIAL.keys()),
-                "Ampliación sucursales":         ["ZMED", "ZNOM", "ZINS"],
+                "Ampliación sucursales": ["ZMED", "ZNOM", "ZINS", "ZSER_C", "ZSER_NC"],
                 "Modificación datos básicos":    list(TIPOS_MATERIAL.keys()),
             }
             tipos_disp = TIPOS_POR_FLUJO[st.session_state.flujo]

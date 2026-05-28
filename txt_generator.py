@@ -190,12 +190,14 @@ def gen_datos_centro_SUC(materiales: list[dict], cfg: dict) -> bytes:
     for m in materiales:
         for werks, datos in CENTRO_BENEFICIO_MAP.items():
             fila = [
-                m["MATNR"], werks, "", "", "",
+                m["MATNR"], werks,
+                "", "",
+                cfg.get("SUC_mtvfp", "") if tiene_extra else "",
                 datos["KOKRS"], datos["PRCTR"],
                 "", "", "",
-                cfg.get("SUC_ekgrp","") if tiene_extra else "",
-                cfg.get("SUC_kautb","") if tiene_extra else "",
-                cfg.get("SUC_taxim","") if tiene_extra else "",
+                cfg.get("SUC_ekgrp", "") if tiene_extra else "",
+                cfg.get("SUC_kautb", "") if tiene_extra else "",
+                cfg.get("SUC_taxim", "") if tiene_extra else "",
                 "","","","","","","","","",
             ]
             filas.append(fila)
@@ -445,7 +447,6 @@ def gen_datos_valoracion_ZNOA(materiales: list[dict], cfg: dict, centros_cl: lis
     return _txt(h_nombres, h_tecnicos, filas)
 
 def gen_datos_valoracion_SUC(materiales: list[dict], cfg: dict) -> bytes | None:
-    """Valoración para sucursales (ZINS): una fila por material × sucursal."""
     if not cfg.get("SUC_valoracion"):
         return None
 
@@ -462,7 +463,10 @@ def gen_datos_valoracion_SUC(materiales: list[dict], cfg: dict) -> bytes | None:
             filas.append([
                 m["MATNR"], werks,
                 cfg["SUC_bklas"], cfg["SUC_vprsv"],
-                "ARS", cfg["SUC_verpr"], "", cfg["SUC_peinh"],
+                "ARS",
+                cfg.get("SUC_verpr", ""),
+                cfg.get("SUC_stprs", ""),
+                cfg["SUC_peinh"],
             ])
 
     return _txt(h_nombres, h_tecnicos, filas)
