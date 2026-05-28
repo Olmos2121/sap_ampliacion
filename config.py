@@ -241,7 +241,7 @@ TIPOS_MATERIAL = {
         "EKWSL": "1",
         "TRAGR": "0001",
         "vistas_CL":  ["B","V","C","A","CO"],
-        "vistas_SUC": ["A","CO"],
+        "vistas_SUC": ["A", "C", "CO"],
         "vistas_MOD": ["B"],
         "CL_centros": [
             {

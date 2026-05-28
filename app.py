@@ -417,37 +417,94 @@ if "Datos de centro" in nombres_tabs:
 
         if flujo == "Ampliación centros logísticos":
 
-            for centro in cfg.get("CL_centros", []):
-                werks = centro["WERKS"]
-                if werks not in centros_sel:
-                    continue
+            centros_activos = [
+                c for c in cfg.get("CL_centros", [])
+                if c["WERKS"] in centros_sel
+            ]
 
-                section_open(f"Centro {werks}", "📍")
+            # Verificar si todos los centros activos comparten las mismas opciones
+            ekgrp_opciones_set = set(
+                tuple(c["ekgrp_opciones"])
+                for c in centros_activos if "ekgrp_opciones" in c
+            )
+            taxim_opciones_set = set(
+                tuple(c["taxim_opciones"])
+                for c in centros_activos if "taxim_opciones" in c
+            )
+            compartir_ekgrp = len(ekgrp_opciones_set) == 1
+            compartir_taxim = len(taxim_opciones_set) == 1
 
-                if "ekgrp_opciones" in centro:
+            if len(centros_activos) > 1 and (compartir_ekgrp or compartir_taxim):
+                # Mostrar campos una sola vez con etiqueta genérica
+                centros_label = " / ".join(c["WERKS"] for c in centros_activos)
+                section_open(f"Centros {centros_label}", "📍")
+                st.caption("Los valores se aplicarán a todos los centros seleccionados.")
+
+                if compartir_ekgrp and ekgrp_opciones_set:
+                    opciones_ekgrp = list(list(ekgrp_opciones_set)[0])
                     campo_editable(
-                        "Grupo de compra", f"EKGRP_{werks}",
+                        "Grupo de compra", "EKGRP_TODOS",
                         tipo="select", tecnico="EKGRP",
-                        opciones=centro["ekgrp_opciones"],
+                        opciones=opciones_ekgrp,
                     )
-                if "taxim_opciones" in centro:
-                    campo_editable(
-                        "Indicador de impuestos", f"TAXIM_{werks}",
-                        tipo="select", tecnico="TAXIM",
-                        opciones=centro["taxim_opciones"],
-                    )
+                    # Propagar a todos los centros
+                    val = st.session_state.materiales.get("EKGRP_TODOS", [""] * n)
+                    for c in centros_activos:
+                        st.session_state.materiales[f"EKGRP_{c['WERKS']}"] = list(val)
 
-                fijos_c = {
-                    k: v for k, v in centro.items()
-                    if k not in ("WERKS", "ekgrp_opciones", "taxim_opciones",
-                                 "KOKRS", "PRCTR")
-                    and v
-                }
-                if fijos_c:
-                    bloque_fijos(f"Centro {werks}", fijos_c)
+                if compartir_taxim and taxim_opciones_set:
+                    opciones_taxim = list(list(taxim_opciones_set)[0])
+                    campo_editable(
+                        "Indicador de impuestos", "TAXIM_TODOS",
+                        tipo="select", tecnico="TAXIM",
+                        opciones=opciones_taxim,
+                    )
+                    val = st.session_state.materiales.get("TAXIM_TODOS", [""] * n)
+                    for c in centros_activos:
+                        st.session_state.materiales[f"TAXIM_{c['WERKS']}"] = list(val)
+
+                # Valores fijos: mostrar los de todos los centros juntos
+                for c in centros_activos:
+                    fijos_c = {
+                        f"{k} ({c['WERKS']})": v for k, v in c.items()
+                        if k not in ("WERKS","ekgrp_opciones","taxim_opciones","KOKRS","PRCTR")
+                        and v
+                    }
+                    if fijos_c:
+                        bloque_fijos(f"Valores fijos — {c['WERKS']}", fijos_c)
 
                 section_close()
                 st.markdown("")
+
+            else:
+                # Centros con opciones distintas → mostrar por separado
+                for centro in centros_activos:
+                    werks = centro["WERKS"]
+                    section_open(f"Centro {werks}", "📍")
+
+                    if "ekgrp_opciones" in centro:
+                        campo_editable(
+                            "Grupo de compra", f"EKGRP_{werks}",
+                            tipo="select", tecnico="EKGRP",
+                            opciones=centro["ekgrp_opciones"],
+                        )
+                    if "taxim_opciones" in centro:
+                        campo_editable(
+                            "Indicador de impuestos", f"TAXIM_{werks}",
+                            tipo="select", tecnico="TAXIM",
+                            opciones=centro["taxim_opciones"],
+                        )
+
+                    fijos_c = {
+                        k: v for k, v in centro.items()
+                        if k not in ("WERKS","ekgrp_opciones","taxim_opciones","KOKRS","PRCTR")
+                        and v
+                    }
+                    if fijos_c:
+                        bloque_fijos(f"Centro {werks}", fijos_c)
+
+                    section_close()
+                    st.markdown("")
 
             # Sucursales ZNOA — fuera del loop, se renderiza una sola vez
             if cfg.get("ZNOA_incluye_sucursales_en_CL"):
