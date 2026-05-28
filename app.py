@@ -1,3 +1,4 @@
+from pathlib import Path
 import streamlit as st
 import pandas as pd
 
@@ -30,6 +31,7 @@ from core.state import (
     inicializar_materiales,
     reset_state,
 )
+from core.preparar import procesar
 from core.validators import validar
 from core.generators import generar_zip
 from core.tabs import tabs_para_flujo
@@ -55,6 +57,103 @@ init_state()
 # ─────────────────────────────────────────────────────────────────────────────
 
 shell_bar()
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Selector de modo principal
+# ─────────────────────────────────────────────────────────────────────────────
+if "modo" not in st.session_state:
+    st.session_state.modo = "ampliar"
+
+col_m1, col_m2, col_m3 = st.columns([2, 2, 6])
+if col_m1.button(
+    "📦 Ampliación / Modificación",
+    type="primary" if st.session_state.modo == "ampliar" else "secondary",
+    use_container_width=True,
+):
+    st.session_state.modo = "ampliar"
+    st.rerun()
+if col_m2.button(
+    "⚙️ Preparar materiales",
+    type="primary" if st.session_state.modo == "preparar" else "secondary",
+    use_container_width=True,
+):
+    st.session_state.modo = "preparar"
+    st.rerun()
+
+st.markdown("")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MODO: PREPARAR MATERIALES
+# ─────────────────────────────────────────────────────────────────────────────
+if st.session_state.modo == "preparar":
+
+    breadcrumb("Preparar materiales")
+    page_title("Gestión de materiales", "⚙️ Preparar materiales para la app")
+
+    section_open("Archivos de entrada", "📂")
+    st.caption(
+        "Subí el Excel de altas que recibís del otro área y la tabla de conversión. "
+        "El resultado es un Excel listo para pegar en la app de ampliación."
+    )
+
+    st.markdown('<div class="sap-table-label">Excel de altas (hoja ABM)</div>',
+                unsafe_allow_html=True)
+    archivo_altas = st.file_uploader(
+        "altas", type=["xlsx"], label_visibility="collapsed",
+        key="up_altas"
+    )
+
+    section_close()
+
+    CONV_PATH = Path("Conversion_Materiales_SAP.xlsx")
+    if archivo_altas:
+        if not CONV_PATH.exists():
+            st.error("No se encontró 'Conversion_Materiales_SAP.xlsx' en la carpeta del proyecto.")
+            st.stop()
+        section_open("Vista previa", "👁")
+        try:
+            df_prev = pd.read_excel(archivo_altas, sheet_name="ABM", header=2, dtype=str)
+            df_prev = df_prev[
+                df_prev["ID_CATEGORIA"].notna() &
+                df_prev["ID_CATEGORIA"].str.match(r"^J\d{4}$", na=False)
+            ]
+            st.caption(f"{len(df_prev)} materiales detectados en el archivo.")
+            st.dataframe(
+                df_prev[["ID_CATEGORIA", "NOMBRE MATERIAL SAP",
+                          "Volumen (CM3)", "E-Commerce", "IVA"]].head(10),
+                use_container_width=True, hide_index=True,
+            )
+            archivo_altas.seek(0)
+        except Exception as e:
+            st.warning(f"No se pudo previsualizar: {e}")
+        section_close()
+
+        section_open("Generar", "⚙️")
+        if st.button("⚙️ Procesar y descargar", type="primary"):
+            with st.spinner("Procesando..."):
+                try:
+                    bytes_altas = archivo_altas.read()
+                    bytes_conv  = CONV_PATH.read_bytes()
+                    excel_out, n_mats, advertencias = procesar(bytes_altas, bytes_conv)
+
+                    st.success(f"✅ {n_mats} materiales procesados.")
+                    for av in advertencias:
+                        st.warning(av)
+
+                    ts = pd.Timestamp.now().strftime("%Y%m%d_%H%M")
+                    st.download_button(
+                        label=f"⬇️ Descargar Excel preparado ({n_mats} materiales)",
+                        data=excel_out,
+                        file_name=f"Materiales_SAP_{ts}.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        key="dl_preparar",
+                    )
+                except Exception as e:
+                    st.error(f"Error al procesar: {e}")
+        section_close()
+
+    st.stop()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
