@@ -30,6 +30,7 @@ from core.state import (
     get_mats,
     inicializar_materiales,
     reset_state,
+    cargar_desde_excel_preparado,
 )
 from core.preparar import procesar
 from core.validators import validar
@@ -92,10 +93,6 @@ if st.session_state.modo == "preparar":
     page_title("Gestión de materiales", "⚙️ Preparar materiales para la app")
 
     section_open("Archivos de entrada", "📂")
-    st.caption(
-        "Subí el Excel de altas que recibís del otro área y la tabla de conversión. "
-        "El resultado es un Excel listo para pegar en la app de ampliación."
-    )
 
     st.markdown('<div class="sap-table-label">Excel de altas (hoja ABM)</div>',
                 unsafe_allow_html=True)
@@ -194,73 +191,138 @@ if not st.session_state.configurado:
             st.caption(info["desc"])
         section_close()
 
-    # ── Columna 2: Tipo de material ───────────────────────────────────────
+    # ── Columna 2: Tipo de material o archivo preparado ───────────────────
     with col_mat:
-        section_open("2. Tipo de material", "🏷️")
-        if st.session_state.flujo:
-            TIPOS_POR_FLUJO = {
-                "Ampliación centros logísticos": list(TIPOS_MATERIAL.keys()),
-                "Ampliación sucursales": ["ZMED", "ZNOM", "ZINS", "ZSER_C", "ZSER_NC"],
-                "Modificación datos básicos":    list(TIPOS_MATERIAL.keys()),
-            }
-            tipos_disp = TIPOS_POR_FLUJO[st.session_state.flujo]
-            cols_t = st.columns(2)
-            for i, t in enumerate(tipos_disp):
-                activo = st.session_state.tipo_mat == t
-                if cols_t[i % 2].button(
-                    t.replace("_", " "),
-                    key=f"chip_{t}",
-                    type="primary" if activo else "secondary",
-                    use_container_width=True,
-                ):
-                    if st.session_state.tipo_mat != t:
-                        st.session_state.tipo_mat           = t
-                        st.session_state.materiales         = {}
-                        st.session_state.n_mats             = 0
-                        st.session_state.centros_seleccionados = []
-                    st.rerun()
+        es_CL = st.session_state.flujo == "Ampliación centros logísticos"
+
+        if es_CL:
+            section_open("2. Modo de ingreso", "📥")
+            modo_ingreso = st.radio(
+                "modo",
+                ["✏️ Elegir tipo y cargar MATNR", "📂 Subir archivo preparado"],
+                key="modo_ingreso_cl",
+                label_visibility="collapsed",
+            )
+            section_close()
         else:
-            st.caption("Seleccioná una operación primero.")
-        section_close()
+            modo_ingreso = "✏️ Elegir tipo y cargar MATNR"
+
+        if not es_CL or modo_ingreso == "✏️ Elegir tipo y cargar MATNR":
+            section_open("2. Tipo de material" if not es_CL else "3. Tipo de material", "🏷️")
+            if st.session_state.flujo:
+                TIPOS_POR_FLUJO = {
+                    "Ampliación centros logísticos": list(TIPOS_MATERIAL.keys()),
+                    "Ampliación sucursales":         ["ZMED", "ZNOM", "ZINS", "ZSER_C", "ZSER_NC"],
+                    "Modificación datos básicos":    list(TIPOS_MATERIAL.keys()),
+                }
+                tipos_disp = TIPOS_POR_FLUJO[st.session_state.flujo]
+                cols_t = st.columns(2)
+                for i, t in enumerate(tipos_disp):
+                    activo = st.session_state.tipo_mat == t
+                    if cols_t[i % 2].button(
+                        t.replace("_", " "),
+                        key=f"chip_{t}",
+                        type="primary" if activo else "secondary",
+                        use_container_width=True,
+                    ):
+                        if st.session_state.tipo_mat != t:
+                            st.session_state.tipo_mat           = t
+                            st.session_state.materiales         = {}
+                            st.session_state.n_mats             = 0
+                            st.session_state.centros_seleccionados = []
+                        st.rerun()
+            else:
+                st.caption("Seleccioná una operación primero.")
+            section_close()
 
     # ── Columna 3: Centros logísticos ─────────────────────────────────────
     with col_centros:
-        section_open("3. Centros logísticos", "📍")
         es_CL = st.session_state.flujo == "Ampliación centros logísticos"
-        if es_CL and st.session_state.tipo_mat:
-            centros_disp = CENTROS_DISPONIBLES.get(st.session_state.tipo_mat, [])
-            st.caption("Seleccioná en qué centros ampliar.")
-            seleccionados = []
-            for centro in centros_disp:
-                activo = centro in st.session_state.centros_seleccionados
-                if st.button(
-                    f"{'✅' if activo else '⬜'}  {centro}",
-                    key=f"btn_centro_{centro}",
-                    use_container_width=True,
-                    type="primary" if activo else "secondary",
-                ):
-                    nuevos = list(st.session_state.centros_seleccionados)
-                    if centro in nuevos:
-                        nuevos.remove(centro)
-                    else:
-                        nuevos.append(centro)
-                    st.session_state.centros_seleccionados = nuevos
-                    st.rerun()
-            if not st.session_state.centros_seleccionados:
-                st.caption("⚠️ Seleccioná al menos un centro.")
-        elif not es_CL and st.session_state.flujo:
-            st.caption("No aplica para este flujo.")
+        modo_actual = st.session_state.get("modo_ingreso_cl", "✏️ Elegir tipo y cargar MATNR")
+
+        if es_CL and modo_actual == "📂 Subir archivo preparado":
+            # Centros se detectan del archivo — no se muestran aquí
+            section_open("3. Centros", "📍")
+            st.caption("Se detectan automáticamente del archivo preparado.")
+            section_close()
         else:
-            st.caption("Seleccioná operación y tipo primero.")
+            section_open("3. Centros logísticos", "📍")
+            if es_CL and st.session_state.tipo_mat:
+                centros_disp = CENTROS_DISPONIBLES.get(st.session_state.tipo_mat, [])
+                st.caption("Seleccioná en qué centros ampliar.")
+                for centro in centros_disp:
+                    activo = centro in st.session_state.centros_seleccionados
+                    if st.button(
+                        f"{'✅' if activo else '⬜'}  {centro}",
+                        key=f"btn_centro_{centro}",
+                        use_container_width=True,
+                        type="primary" if activo else "secondary",
+                    ):
+                        nuevos = list(st.session_state.centros_seleccionados)
+                        if centro in nuevos:
+                            nuevos.remove(centro)
+                        else:
+                            nuevos.append(centro)
+                        st.session_state.centros_seleccionados = nuevos
+                        st.rerun()
+                if not st.session_state.centros_seleccionados:
+                    st.caption("⚠️ Seleccioná al menos un centro.")
+            elif not es_CL and st.session_state.flujo:
+                st.caption("No aplica para este flujo.")
+            else:
+                st.caption("Seleccioná operación y tipo primero.")
+            section_close()
+
+    # ── Fila inferior: ingreso de materiales ──────────────────────────────
+    es_CL = st.session_state.flujo == "Ampliación centros logísticos"
+    modo_actual = st.session_state.get("modo_ingreso_cl", "✏️ Elegir tipo y cargar MATNR")
+
+    if st.session_state.flujo and es_CL and modo_actual == "📂 Subir archivo preparado":
+        section_open("Archivo preparado (Excel)", "📂")
+        st.caption(
+            "Subí el Excel generado por 'Preparar materiales' con los MATNR ya completados. "
+            "Tipo de material y centros se detectan automáticamente del archivo."
+        )
+        archivo_prep = st.file_uploader(
+            "prep", type=["xlsx"], label_visibility="collapsed",
+            key="up_prep"
+        )
+        if archivo_prep:
+            try:
+                df_prep = pd.read_excel(archivo_prep, sheet_name="PARA_APP", dtype=str)
+                st.caption(f"{len(df_prep)} materiales detectados.")
+                st.dataframe(
+                    df_prep[["MATNR","Tipo material","MAKTX","Centros","EKGRP","TAXIM"]].head(5),
+                    use_container_width=True, hide_index=True,
+                )
+
+                if st.button("Continuar →", type="primary", use_container_width=True, key="btn_prep"):
+                    # Detectar tipo de material del archivo
+                    tipos = df_prep["Tipo material"].dropna().unique()
+                    if len(tipos) > 1:
+                        st.error(f"El archivo tiene múltiples tipos de material: {', '.join(tipos)}. Separá por tipo y volvé a subir.")
+                    else:
+                        tipo_detectado = tipos[0] if len(tipos) == 1 else ""
+                        if tipo_detectado not in TIPOS_MATERIAL:
+                            st.error(f"Tipo de material '{tipo_detectado}' no reconocido.")
+                        else:
+                            st.session_state.tipo_mat = tipo_detectado
+                            cfg_tmp = TIPOS_MATERIAL[tipo_detectado]
+                            exito, error = cargar_desde_excel_preparado(df_prep, cfg_tmp)
+                            if exito:
+                                st.session_state.configurado = True
+                                st.rerun()
+                            else:
+                                st.error(error)
+            except Exception as e:
+                st.error(f"Error al leer el archivo: {e}")
         section_close()
 
-    # ── Fila inferior: MATNR + Continuar ─────────────────────────────────
-    if st.session_state.flujo and st.session_state.tipo_mat:
+    elif st.session_state.flujo and st.session_state.tipo_mat:
         section_open("Números de material (MATNR)", "🔢")
         st.caption("Copiá y pegá desde Excel (una columna, un número por línea).")
 
         col_area, col_btn = st.columns([4, 1])
-
         with col_area:
             texto_matnr = st.text_area(
                 label="matnr_input",
@@ -269,18 +331,15 @@ if not st.session_state.configurado:
                 height=120,
                 key="input_matnr",
             )
-
         lineas_preview = [
             l.strip()
             for l in texto_matnr.replace("\t", "\n").splitlines()
             if l.strip()
         ]
-
         with col_btn:
             st.markdown("<div style='height:1.5rem'></div>", unsafe_allow_html=True)
             sin_centros = (
-                st.session_state.flujo == "Ampliación centros logísticos"
-                and not st.session_state.centros_seleccionados
+                es_CL and not st.session_state.centros_seleccionados
             )
             if st.button("Continuar →", type="primary", use_container_width=True,
                          disabled=sin_centros or not lineas_preview):
@@ -289,7 +348,6 @@ if not st.session_state.configurado:
                 st.session_state.configurado = True
                 st.rerun()
             st.caption(f"{len(lineas_preview)} material(es)")
-
         section_close()
 
     st.stop()

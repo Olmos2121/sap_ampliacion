@@ -95,3 +95,79 @@ def reset_state():
     st.session_state.flujo       = None
     st.session_state.tipo_mat    = None
     st.session_state.centros_seleccionados = []
+
+def cargar_desde_excel_preparado(df: "pd.DataFrame", cfg: dict) -> tuple[bool, str]:
+    """
+    Carga el estado de materiales desde el Excel preparado (hoja PARA_APP).
+    Retorna (exito, mensaje_error).
+    """
+    import pandas as pd
+
+    # Validar que todos los materiales tengan MATNR
+    sin_matnr = df["MATNR"].isna() | (df["MATNR"].astype(str).str.strip() == "")
+    if sin_matnr.any():
+        return False, f"{sin_matnr.sum()} material(es) sin MATNR. Completá todos los números antes de subir."
+
+    # Validar tipo de material único
+    tipos = df["Tipo material"].dropna().unique()
+    if len(tipos) > 1:
+        return False, f"El archivo tiene múltiples tipos de material: {', '.join(tipos)}. Separá por tipo y volvé a subir."
+
+    # Validar centros únicos
+    centros_por_mat = df["Centros"].dropna().unique()
+    if len(centros_por_mat) > 1:
+        return False, (
+            f"El archivo tiene combinaciones de centros distintas: "
+            f"{', '.join(centros_por_mat)}. "
+            f"Separalos en archivos distintos para poder subirlos."
+        )
+
+    # Parsear centros
+    centros_str = centros_por_mat[0] if len(centros_por_mat) == 1 else ""
+    centros = [c.strip() for c in centros_str.split("+") if c.strip()]
+
+    # Inicializar estado
+    n = len(df)
+    st.session_state.n_mats = n
+    st.session_state.centros_seleccionados = centros
+
+    campos_base = ["MATNR","MAKTX","MATKL","PRDHA","VOLUM","TEXTO_LARGO","SPART","KTGRM"]
+    for campo in campos_base:
+        st.session_state.materiales[campo] = [""] * n
+
+    st.session_state.materiales["MSTAE"] = [True] * n
+
+    # Llenar campos desde el Excel
+    mapeo = {
+        "MATNR":       "MATNR",
+        "MAKTX":       "MAKTX",
+        "TEXTO_LARGO": "TEXTO_LARGO",
+        "MATKL":       "MATKL",
+        "PRDHA":       "PRDHA",
+        "VOLUM":       "VOLUM",
+        "SPART":       "SPART",
+        "KTGRM":       "KTGRM",
+    }
+    for campo_estado, col_excel in mapeo.items():
+        if col_excel in df.columns:
+            st.session_state.materiales[campo_estado] = [
+                str(v).strip() if v is not None and str(v) not in ("nan","None","") else ""
+                for v in df[col_excel].tolist()
+            ]
+
+    # Inicializar EKGRP y TAXIM por centro desde el Excel
+    for centro in cfg.get("CL_centros", []):
+        werks = centro["WERKS"]
+        if werks in centros:
+            ekgrp_vals = [
+                str(v).strip() if v is not None and str(v) not in ("nan","None","") else ""
+                for v in df.get("EKGRP", [""] * n)
+            ] if "EKGRP" in df.columns else [""] * n
+            taxim_vals = [
+                str(v).strip() if v is not None and str(v) not in ("nan","None","") else ""
+                for v in df.get("TAXIM", [""] * n)
+            ] if "TAXIM" in df.columns else [""] * n
+            st.session_state.materiales[f"EKGRP_{werks}"] = ekgrp_vals
+            st.session_state.materiales[f"TAXIM_{werks}"] = taxim_vals
+
+    return True, ""
