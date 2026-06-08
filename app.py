@@ -116,9 +116,14 @@ if st.session_state.modo == "preparar":
                 df_prev["ID_CATEGORIA"].str.match(r"^J\d{4}$", na=False)
             ]
             st.caption(f"{len(df_prev)} materiales detectados en el archivo.")
+            df_prev_display = df_prev[["ID_CATEGORIA", "NOMBRE MATERIAL SAP",
+                                       "Volumen (CM3)", "E-Commerce", "IVA"]].head(10).copy()
+            df_prev_display["Volumen (CM3)"] = df_prev_display["Volumen (CM3)"].apply(
+                lambda v: f"{float(str(v).replace(',', '.')):.2f}".rstrip("0").rstrip(".")
+                if v and str(v).strip() not in ("", "nan") else v
+            )
             st.dataframe(
-                df_prev[["ID_CATEGORIA", "NOMBRE MATERIAL SAP",
-                          "Volumen (CM3)", "E-Commerce", "IVA"]].head(10),
+                df_prev_display,
                 use_container_width=True, hide_index=True,
             )
             archivo_altas.seek(0)
@@ -499,7 +504,7 @@ if "Datos de centro" in nombres_tabs:
                 st.caption("Los valores se aplicarán a todos los centros seleccionados.")
 
                 if compartir_ekgrp and ekgrp_opciones_set:
-                    opciones_ekgrp = list(list(ekgrp_opciones_set)[0])
+                    opciones_ekgrp = [""] + list(list(ekgrp_opciones_set)[0])
                     campo_editable(
                         "Grupo de compra", "EKGRP_TODOS",
                         tipo="select", tecnico="EKGRP",
@@ -544,7 +549,7 @@ if "Datos de centro" in nombres_tabs:
                         campo_editable(
                             "Grupo de compra", f"EKGRP_{werks}",
                             tipo="select", tecnico="EKGRP",
-                            opciones=centro["ekgrp_opciones"],
+                            opciones=[""] + centro["ekgrp_opciones"],
                         )
                     if "taxim_opciones" in centro:
                         campo_editable(

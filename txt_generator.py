@@ -62,7 +62,8 @@ def gen_datos_basicos(materiales: list[dict], cfg: dict, vistas_key: str) -> byt
         elif es_modificacion:
             # Modificacion: solo los campos que el usuario completo, fijos vacios
             mod_campos = cfg.get("MOD_campos", [])
-            voleh = cfg.get("VOLEH","") if "VOLUM" in mod_campos else ""
+            volum_valor = m.get("VOLUM", "") if "VOLUM" in mod_campos else ""
+            voleh_valor = cfg.get("VOLEH", "") if volum_valor else ""
             fila += [
                 "",                                                      # MTART
                 "",                                                      # MAKTL
@@ -72,8 +73,8 @@ def gen_datos_basicos(materiales: list[dict], cfg: dict, vistas_key: str) -> byt
                 m.get("PRDHA","") if "PRDHA" in mod_campos else "",     # PRDHA
                 "",                                                      # XCHPF
                 "",                                                      # MTPOS
-                m.get("VOLUM","") if "VOLUM" in mod_campos else "",     # VOLUM
-                voleh,                                                   # VOLEH
+                volum_valor,     # VOLUM
+                voleh_valor,                                                   # VOLEH
                 "",                                                      # EKWSL
                 "",                                                      # TRAGR
                 "",                                                      # IPRKZ

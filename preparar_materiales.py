@@ -118,7 +118,11 @@ def transformar(df_mats: pd.DataFrame, conv: pd.DataFrame) -> pd.DataFrame:
 
         # ── Campos que vienen directo del Excel de entrada ──────────────
         nombre_sap  = limpiar_texto(row.get("NOMBRE MATERIAL SAP", ""))
-        volumen     = limpiar_texto(row.get("Volumen (CM3)", ""))
+        volumen_raw = limpiar_texto(row.get("Volumen (CM3)", ""))
+        try:
+            volumen = f"{float(str(volumen_raw).replace(',', '.')):.2f}".rstrip("0").rstrip(".") if volumen_raw else ""
+        except (ValueError, TypeError):
+            volumen = volumen_raw
         iva_raw     = limpiar_texto(row.get("IVA", ""))
         ecommerce = limpiar_texto(row.get("E-Commerce", ""), default="No especificado").upper()
         if ecommerce == "":
