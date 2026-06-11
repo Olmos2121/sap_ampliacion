@@ -456,13 +456,22 @@ with tabs[0]:
             "Estado del material", "MSTAE", tipo="checkbox", tecnico="MSTAE",
         )
 
-        # Valores fijos
-        fijos = {
-            k: v for k, v in cfg.items()
-            if k in ("MTART","SPART","XCHPF","MTPOS","VOLEH",
-                      "EKWSL","TRAGR","IPRKZ","MHDRZ","SERIAL")
-            and v
-        }
+        # Checkbox Trazable — solo para ZMED en ampliación centros logísticos
+        if cfg.get("MTART") == "ZMED" and flujo == "Ampliación centros logísticos":
+            campo_editable(
+                "Trazable", "TRAZABLE", tipo="checkbox", tecnico="SERIAL / SERNP",
+                ayuda="Si está activo, se asigna perfil serie TRAZ (datos básicos y datos de centro).",
+            )
+
+        # Valores fijos — SERIAL se muestra dinámicamente según trazabilidad
+        fijos_keys = ("MTART","SPART","XCHPF","MTPOS","VOLEH","EKWSL","TRAGR","IPRKZ","MHDRZ")
+        fijos = {k: v for k, v in cfg.items() if k in fijos_keys and v}
+        if cfg.get("MTART") == "ZMED":
+            serial_val = "TRAZ" if (mats.get("TRAZABLE", [True])[0] if n > 0 else True) else ""
+            if serial_val:
+                fijos["SERIAL"] = serial_val
+        elif cfg.get("SERIAL"):
+            fijos["SERIAL"] = cfg["SERIAL"]
         if fijos:
             bloque_fijos("Datos básicos", fijos)
 

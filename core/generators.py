@@ -35,6 +35,13 @@ def construir_lista(n: int, mats: dict, cfg: dict) -> list[dict]:
         # Resolver MSTAE: True → "/" (activo), False → "" (bloqueado)
         m["MSTAE"] = resolver_mstae(i)
 
+        # Resolver SERIAL desde TRAZABLE (solo ZMED)
+        if cfg.get("MTART") == "ZMED":
+            trazable = m.get("TRAZABLE", True)
+            if isinstance(trazable, str):
+                trazable = trazable.strip().upper() not in ("FALSE", "NO", "")
+            m["SERIAL"] = "TRAZ" if trazable else ""
+
         # SPART: usar el del material o el fijo del tipo
         if not m.get("SPART"):
             m["SPART"] = cfg.get("SPART", "")

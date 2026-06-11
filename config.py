@@ -126,7 +126,6 @@ TIPOS_MATERIAL = {
         "TRAGR": "0001",
         "IPRKZ": "D",
         "MHDRZ": "270",
-        "SERIAL": "TRAZ",
         # vistas activas en centros logísticos
         "vistas_CL": ["B","V","C","MRP","P","A","WM","CO","MRPAREA"],
         # vistas activas en sucursales

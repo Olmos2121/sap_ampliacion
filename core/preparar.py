@@ -91,6 +91,8 @@ def transformar(df_mats: pd.DataFrame, conv: pd.DataFrame) -> pd.DataFrame:
         ecommerce   = limpiar_texto(row.get("E-Commerce", ""), default="No especificado").upper()
         if ecommerce == "":
             ecommerce = "No especificado"
+        trazable_raw = limpiar_texto(row.get("Trazable", ""), default="").upper()
+        trazable    = "SI" if trazable_raw == "SI" else "NO"
         prdha       = limpiar_texto(row.get("Unnamed: 4", ""))
         matkl       = id_cat
 
@@ -127,6 +129,7 @@ def transformar(df_mats: pd.DataFrame, conv: pd.DataFrame) -> pd.DataFrame:
             "EKGRP":              ekgrp,
             "TAXIM":              taxim or "No especificado",
             "E-Commerce":         ecommerce,
+            "Trazable":           trazable,
             "Centros":            centros_str,
             "KTGRM":              ktgrm,
             "_ktgrm_pendiente":   ktgrm_pendiente,
@@ -143,7 +146,7 @@ def transformar(df_mats: pd.DataFrame, conv: pd.DataFrame) -> pd.DataFrame:
 def generar_excel(df: pd.DataFrame) -> bytes:
     cols_app = ["MATNR", "Tipo material", "MAKTX", "TEXTO_LARGO",
                 "MATKL", "PRDHA", "VOLUM", "SPART", "EKGRP",
-                "TAXIM", "E-Commerce", "Centros", "KTGRM"]
+                "TAXIM", "E-Commerce", "Trazable", "Centros", "KTGRM"]
     df_app = df[cols_app].copy()
 
     HEADER_FILL  = PatternFill("solid", fgColor="0A6ED1")
@@ -156,7 +159,7 @@ def generar_excel(df: pd.DataFrame) -> bytes:
     anchos = {
         "MATNR": 15, "Tipo material": 14, "MAKTX": 40, "TEXTO_LARGO": 40,
         "MATKL": 10, "PRDHA": 12, "VOLUM": 10, "SPART": 8,
-        "EKGRP": 8,  "TAXIM": 8,  "E-Commerce": 14, "Centros": 18, "KTGRM": 10,
+        "EKGRP": 8,  "TAXIM": 8,  "E-Commerce": 14, "Trazable": 10, "Centros": 18, "KTGRM": 10,
     }
 
     wb = openpyxl.Workbook()

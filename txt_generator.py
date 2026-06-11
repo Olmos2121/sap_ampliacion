@@ -99,7 +99,7 @@ def gen_datos_basicos(materiales: list[dict], cfg: dict, vistas_key: str) -> byt
                 cfg.get("TRAGR",""),
                 cfg.get("IPRKZ",""),
                 cfg.get("MHDRZ",""),
-                cfg.get("SERIAL",""),
+                m.get("SERIAL", cfg.get("SERIAL","")),
                 m.get("TEXTO_LARGO", m.get("MAKTX","")),
                 m.get("MSTAE",""),
             ]
@@ -136,6 +136,9 @@ def gen_datos_centro_CL(materiales: list[dict], cfg: dict, centros: list = None)
             # EKGRP y TAXIM pueden ser por-material (el formulario los guarda con clave WERKS)
             ekgrp = m.get(f"EKGRP_{werks}", centro.get("EKGRP",""))
             taxim = m.get(f"TAXIM_{werks}", centro.get("TAXIM",""))
+            # SERNP: si el centro tiene SERNP en config, se resuelve por material
+            sernp_cfg = centro.get("SERNP","")
+            sernp = m.get("SERIAL", sernp_cfg) if sernp_cfg else ""
             fila = [
                 m["MATNR"],
                 werks,
@@ -145,7 +148,7 @@ def gen_datos_centro_CL(materiales: list[dict], cfg: dict, centros: list = None)
                 centro.get("KOKRS",""),
                 centro.get("PRCTR",""),
                 centro.get("XCHPF",""),
-                centro.get("SERNP",""),
+                sernp,
                 centro.get("LADGR",""),
                 ekgrp,
                 centro.get("KAUTB",""),

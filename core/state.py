@@ -77,6 +77,10 @@ def inicializar_materiales(lineas: list, cfg: dict):
     st.session_state.materiales["MATNR"] = lineas
     st.session_state.materiales["MSTAE"] = [True] * n
 
+    # TRAZABLE: solo aplica a ZMED; por defecto True (trazable)
+    if cfg.get("MTART") == "ZMED":
+        st.session_state.materiales["TRAZABLE"] = [True] * n
+
     # Inicializar campos por centro logístico
     for centro in cfg.get("CL_centros", []):
         werks = centro["WERKS"]
@@ -136,6 +140,17 @@ def cargar_desde_excel_preparado(df: "pd.DataFrame", cfg: dict) -> tuple[bool, s
         st.session_state.materiales[campo] = [""] * n
 
     st.session_state.materiales["MSTAE"] = [True] * n
+
+    # TRAZABLE: solo para ZMED
+    tipo_mat = df["Tipo material"].dropna().iloc[0] if len(df) > 0 else ""
+    if tipo_mat == "ZMED":
+        if "Trazable" in df.columns:
+            st.session_state.materiales["TRAZABLE"] = [
+                str(v).strip().upper() != "NO"
+                for v in df["Trazable"].tolist()
+            ]
+        else:
+            st.session_state.materiales["TRAZABLE"] = [True] * n
 
     # Llenar campos desde el Excel
     mapeo = {
