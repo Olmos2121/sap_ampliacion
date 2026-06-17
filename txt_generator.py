@@ -7,13 +7,6 @@ from config import CENTRO_BENEFICIO_MAP, VISTA_NOMBRES
 
 
 def _txt(header_nombres: list, header_tecnicos: list, filas: list[list]) -> bytes:
-    """
-    Construye el contenido del .txt con:
-      Fila 1: nombres humanos (separados por TAB)
-      Fila 2: campos técnicos SAP
-      Fila 3+: datos
-    Devuelve bytes UTF-8 con CRLF.
-    """
     lines = []
     lines.append("\t".join(header_nombres))
     lines.append("\t".join(header_tecnicos))
@@ -26,11 +19,6 @@ def _txt(header_nombres: list, header_tecnicos: list, filas: list[list]) -> byte
 # DATOS BÁSICOS
 # ─────────────────────────────────────────────────────────────────────────────
 def gen_datos_basicos(materiales: list[dict], cfg: dict, vistas_key: str) -> bytes:
-    """
-    materiales: lista de dicts con campos del formulario
-    cfg: dict del tipo de material desde TIPOS_MATERIAL
-    vistas_key: "vistas_CL" | "vistas_SUC" | "vistas_MOD"
-    """
     vistas_activas = cfg[vistas_key]
 
     TODAS_VISTAS = ["B","V","C","MRP","P","A","WM","CO","MRPAREA"]
@@ -47,7 +35,6 @@ def gen_datos_basicos(materiales: list[dict], cfg: dict, vistas_key: str) -> byt
         "VOLUM","VOLEH","EKWSL","TRAGR","IPRKZ","MHDRZ","SERIAL","","MSTAE",
     ]
 
-    # Para sucursales/modificacion solo van ciertos campos; el resto queda vacio
     es_sucursales = vistas_key == "vistas_SUC"
     es_modificacion = vistas_key == "vistas_MOD"
 
@@ -57,31 +44,29 @@ def gen_datos_basicos(materiales: list[dict], cfg: dict, vistas_key: str) -> byt
         for v in TODAS_VISTAS:
             fila.append("X" if v in vistas_activas else "")
         if es_sucursales:
-            # Sucursales: solo vista de almacenamiento, resto vacio
             fila += [""] * 17
         elif es_modificacion:
-            # Modificacion: solo los campos que el usuario completo, fijos vacios
             mod_campos = cfg.get("MOD_campos", [])
             volum_valor = m.get("VOLUM", "") if "VOLUM" in mod_campos else ""
             voleh_valor = cfg.get("VOLEH", "") if volum_valor else ""
             fila += [
-                "",                                                      # MTART
-                "",                                                      # MAKTL
-                m.get("MAKTX","") if "MAKTX" in mod_campos else "",     # MAKTX
-                "ES" if "MAKTX" in mod_campos else "",                  # SPRAS
-                "",                                                      # SPART
-                m.get("PRDHA","") if "PRDHA" in mod_campos else "",     # PRDHA
-                "",                                                      # XCHPF
-                "",                                                      # MTPOS
-                volum_valor,     # VOLUM
-                voleh_valor,                                                   # VOLEH
-                "",                                                      # EKWSL
-                "",                                                      # TRAGR
-                "",                                                      # IPRKZ
-                "",                                                      # MHDRZ
-                "",                                                      # SERIAL
-                m.get("TEXTO_LARGO", m.get("MAKTX","")),                # Texto largo
-                m.get("MSTAE",""),                                       # MSTAE
+                "",
+                "",
+                m.get("MAKTX","") if "MAKTX" in mod_campos else "",
+                "ES" if "MAKTX" in mod_campos else "",
+                "",
+                m.get("PRDHA","") if "PRDHA" in mod_campos else "",
+                "",
+                "",
+                volum_valor,
+                voleh_valor,
+                "",
+                "",
+                "",
+                "",
+                "",
+                m.get("TEXTO_LARGO", m.get("MAKTX","")),
+                m.get("MSTAE",""),
             ]
         else:
             fila += [
@@ -133,35 +118,19 @@ def gen_datos_centro_CL(materiales: list[dict], cfg: dict, centros: list = None)
     for m in materiales:
         for centro in [c for c in cfg["CL_centros"] if centros is None or c["WERKS"] in centros]:
             werks = centro["WERKS"]
-            # EKGRP y TAXIM pueden ser por-material (el formulario los guarda con clave WERKS)
             ekgrp = m.get(f"EKGRP_{werks}", centro.get("EKGRP",""))
             taxim = m.get(f"TAXIM_{werks}", centro.get("TAXIM",""))
-            # SERNP: si el centro tiene SERNP en config, se resuelve por material
             sernp_cfg = centro.get("SERNP","")
             sernp = m.get("SERIAL", sernp_cfg) if sernp_cfg else ""
             fila = [
-                m["MATNR"],
-                werks,
-                centro.get("DISMM",""),
-                centro.get("DISPO",""),
-                centro.get("MTVFP",""),
-                centro.get("KOKRS",""),
-                centro.get("PRCTR",""),
-                centro.get("XCHPF",""),
-                sernp,
-                centro.get("LADGR",""),
-                ekgrp,
-                centro.get("KAUTB",""),
-                taxim,
-                centro.get("DISGR",""),
-                centro.get("MINBE",""),
-                centro.get("DISLS",""),
-                centro.get("BSTMI",""),
-                centro.get("BSTMA",""),
-                centro.get("BSTFE",""),
-                centro.get("BESKZ",""),
-                centro.get("LGFSB",""),
-                centro.get("PLIFZ",""),
+                m["MATNR"], werks,
+                centro.get("DISMM",""), centro.get("DISPO",""), centro.get("MTVFP",""),
+                centro.get("KOKRS",""), centro.get("PRCTR",""),
+                centro.get("XCHPF",""), sernp, centro.get("LADGR",""),
+                ekgrp, centro.get("KAUTB",""), taxim,
+                centro.get("DISGR",""), centro.get("MINBE",""), centro.get("DISLS",""),
+                centro.get("BSTMI",""), centro.get("BSTMA",""), centro.get("BSTFE",""),
+                centro.get("BESKZ",""), centro.get("LGFSB",""), centro.get("PLIFZ",""),
             ]
             filas.append(fila)
 
@@ -171,7 +140,7 @@ def gen_datos_centro_CL(materiales: list[dict], cfg: dict, centros: list = None)
 # ─────────────────────────────────────────────────────────────────────────────
 # DATOS DE CENTRO — sucursales
 # ─────────────────────────────────────────────────────────────────────────────
-def gen_datos_centro_SUC(materiales: list[dict], cfg: dict) -> bytes:
+def gen_datos_centro_SUC(materiales: list[dict], cfg: dict, mapa: dict = None) -> bytes:
     h_nombres = [
         "Número de producto","Centro","Tipo de MRP","Planificador de necesidades",
         "Verificación de disponibilidad","Sociedad CO","Centro de beneficio",
@@ -189,10 +158,11 @@ def gen_datos_centro_SUC(materiales: list[dict], cfg: dict) -> bytes:
     ]
 
     tiene_extra = cfg.get("SUC_datos_centro", False)
+    mapa_centros = mapa if mapa is not None else CENTRO_BENEFICIO_MAP
 
     filas = []
     for m in materiales:
-        for werks, datos in CENTRO_BENEFICIO_MAP.items():
+        for werks, datos in mapa_centros.items():
             fila = [
                 m["MATNR"], werks,
                 "", "",
@@ -207,6 +177,7 @@ def gen_datos_centro_SUC(materiales: list[dict], cfg: dict) -> bytes:
             filas.append(fila)
 
     return _txt(h_nombres, h_tecnicos, filas)
+
 
 def gen_datos_centro_ZNOA(materiales: list[dict], cfg: dict, centros_cl: list = None) -> bytes:
     from config import CENTRO_BENEFICIO_MAP
@@ -233,8 +204,6 @@ def gen_datos_centro_ZNOA(materiales: list[dict], cfg: dict, centros_cl: list = 
     filas = []
     for m in materiales:
         taxim = m.get("TAXIM_SUC_znoa", "1")
-
-        # Centros logísticos seleccionados
         centros_a_usar = [c["WERKS"] for c in cfg.get("CL_centros", [])
                           if centros_cl is None or c["WERKS"] in centros_cl]
         for werks in centros_a_usar:
@@ -244,8 +213,6 @@ def gen_datos_centro_ZNOA(materiales: list[dict], cfg: dict, centros_cl: list = 
                 ekgrp, kautb, taxim,
                 "","","","","","","","","",
             ])
-
-        # Sucursales
         for werks in CENTRO_BENEFICIO_MAP.keys():
             filas.append([
                 m["MATNR"], werks, "","","","","",
@@ -277,13 +244,8 @@ def gen_cadenas(materiales: list[dict], cfg: dict, centros: list = None) -> byte
         for cadena in [c for c in cfg["CL_cadenas"] if centros is None or c["DWERK"] in centros]:
             for canal in cadena["canales"]:
                 filas.append([
-                    m["MATNR"],
-                    cadena["VKORG"],
-                    canal,
-                    cadena["DWERK"],
-                    cadena["MTPOS"],
-                    ktgrm,
-                    m.get("PRDHA",""),
+                    m["MATNR"], cadena["VKORG"], canal,
+                    cadena["DWERK"], cadena["MTPOS"], ktgrm, m.get("PRDHA",""),
                 ])
 
     return _txt(h_nombres, h_tecnicos, filas)
@@ -397,7 +359,7 @@ def gen_datos_valoracion(materiales: list[dict], cfg: dict, clave: str = "CL_val
     val_cfg = cfg.get(clave, [])
     if not val_cfg:
         return None
-    
+
     h_nombres = [
         "Número de producto","Área de valoración","Categoría de valoración",
         "Control de precios","Moneda","Media variable de precio de inventario",
@@ -415,11 +377,8 @@ def gen_datos_valoracion(materiales: list[dict], cfg: dict, clave: str = "CL_val
 
     return _txt(h_nombres, h_tecnicos, filas)
 
+
 def gen_datos_valoracion_ZNOA(materiales: list[dict], cfg: dict, centros_cl: list = None) -> bytes:
-    """
-    Genera valoración para ZNOA: centros logísticos seleccionados + las ~70 sucursales.
-    Todos con BKLAS 3507, VPRSV V, VERPR 1.
-    """
     from config import CENTRO_BENEFICIO_MAP
 
     h_nombres = [
@@ -434,13 +393,11 @@ def gen_datos_valoracion_ZNOA(materiales: list[dict], cfg: dict, centros_cl: lis
 
     filas = []
     for m in materiales:
-        # Centros logísticos
         for v in val_cl:
             filas.append([
                 m["MATNR"], v["BWKEY"], v["BKLAS"], v["VPRSV"],
                 "ARS", v.get("VERPR",""), v.get("STPRS",""), v.get("PEINH","1"),
             ])
-        # Sucursales
         for werks in CENTRO_BENEFICIO_MAP.keys():
             filas.append([
                 m["MATNR"], werks,
@@ -450,7 +407,8 @@ def gen_datos_valoracion_ZNOA(materiales: list[dict], cfg: dict, centros_cl: lis
 
     return _txt(h_nombres, h_tecnicos, filas)
 
-def gen_datos_valoracion_SUC(materiales: list[dict], cfg: dict) -> bytes | None:
+
+def gen_datos_valoracion_SUC(materiales: list[dict], cfg: dict, mapa: dict = None) -> bytes | None:
     if not cfg.get("SUC_valoracion"):
         return None
 
@@ -461,9 +419,11 @@ def gen_datos_valoracion_SUC(materiales: list[dict], cfg: dict) -> bytes | None:
     ]
     h_tecnicos = ["MATNR","BWKEY","BKLAS","VPRSV","WAERS","VERPR","STPRS ","PEINH"]
 
+    mapa_centros = mapa if mapa is not None else CENTRO_BENEFICIO_MAP
+
     filas = []
     for m in materiales:
-        for werks in CENTRO_BENEFICIO_MAP.keys():
+        for werks in mapa_centros.keys():
             filas.append([
                 m["MATNR"], werks,
                 cfg["SUC_bklas"], cfg["SUC_vprsv"],

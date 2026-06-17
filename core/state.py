@@ -6,6 +6,7 @@ def init_state():
 
     defaults = {
         "flujo": None,
+        "flujo_sel": None,
         "tipo_mat": None,
         "materiales": {},
         "n_mats": 0,
@@ -30,16 +31,16 @@ def get_val(campo: str, idx: int, default: Any = "") -> Any:
     d = get_mats().get(campo, [])
     return d[idx] if idx < len(d) else default
 
+
 def _limpiar(value: Any) -> Any:
     """Elimina saltos de línea y normaliza espacios entre palabras."""
     if isinstance(value, str):
-        # Reemplazar cualquier salto de línea por espacio
         value = value.replace("\r\n", " ").replace("\r", " ").replace("\n", " ")
-        # Colapsar múltiples espacios consecutivos en uno solo
         while "  " in value:
             value = value.replace("  ", " ")
         return value.strip()
     return value
+
 
 def set_val(campo: str, idx: int, value: Any):
     m = get_mats()
@@ -60,10 +61,6 @@ def resolver_mstae(idx: int) -> str:
 
 
 def inicializar_materiales(lineas: list, cfg: dict):
-    """
-    Llamado al confirmar los MATNR en el paso 1.
-    Inicializa el estado completo de materiales.
-    """
     n = len(lineas)
     st.session_state.n_mats = n
 
@@ -77,11 +74,9 @@ def inicializar_materiales(lineas: list, cfg: dict):
     st.session_state.materiales["MATNR"] = lineas
     st.session_state.materiales["MSTAE"] = [True] * n
 
-    # TRAZABLE: solo aplica a ZMED; por defecto True (trazable)
     if cfg.get("MTART") == "ZMED":
         st.session_state.materiales["TRAZABLE"] = [True] * n
 
-    # Inicializar campos por centro logístico
     for centro in cfg.get("CL_centros", []):
         werks = centro["WERKS"]
         st.session_state.materiales[f"EKGRP_{werks}"] = [""] * n
@@ -92,13 +87,15 @@ def inicializar_materiales(lineas: list, cfg: dict):
 
 
 def reset_state():
-    """Reinicia toda la sesión para volver al paso 1."""
+    """Reinicia toda la sesión."""
     st.session_state.configurado = False
     st.session_state.materiales  = {}
     st.session_state.n_mats      = 0
     st.session_state.flujo       = None
+    st.session_state.flujo_sel   = None
     st.session_state.tipo_mat    = None
     st.session_state.centros_seleccionados = []
+
 
 def cargar_desde_excel_preparado(df: "pd.DataFrame", cfg: dict) -> tuple[bool, str]:
     """
@@ -107,7 +104,7 @@ def cargar_desde_excel_preparado(df: "pd.DataFrame", cfg: dict) -> tuple[bool, s
     """
     import pandas as pd
 
-    # Validar que todos los materiales tengan MATNR
+    # Validar MATNRs completos
     sin_matnr = df["MATNR"].isna() | (df["MATNR"].astype(str).str.strip() == "")
     if sin_matnr.any():
         return False, f"{sin_matnr.sum()} material(es) sin MATNR. Completá todos los números antes de subir."
@@ -141,6 +138,13 @@ def cargar_desde_excel_preparado(df: "pd.DataFrame", cfg: dict) -> tuple[bool, s
 
     st.session_state.materiales["MSTAE"] = [True] * n
 
+    # MSTAE desde Excel (NO → False, cualquier otra cosa → True)
+    if "MSTAE" in df.columns:
+        st.session_state.materiales["MSTAE"] = [
+            str(v).strip().upper() != "NO"
+            for v in df["MSTAE"].tolist()
+        ]
+
     # TRAZABLE: solo para ZMED
     tipo_mat = df["Tipo material"].dropna().iloc[0] if len(df) > 0 else ""
     if tipo_mat == "ZMED":
@@ -170,19 +174,30 @@ def cargar_desde_excel_preparado(df: "pd.DataFrame", cfg: dict) -> tuple[bool, s
                 for v in df[col_excel].tolist()
             ]
 
-    # Inicializar EKGRP y TAXIM por centro desde el Excel
+    # EKGRP y TAXIM por centro
     for centro in cfg.get("CL_centros", []):
         werks = centro["WERKS"]
         if werks in centros:
             ekgrp_vals = [
                 str(v).strip() if v is not None and str(v) not in ("nan","None","") else ""
-                for v in df.get("EKGRP", [""] * n)
+                for v in df["EKGRP"].tolist()
             ] if "EKGRP" in df.columns else [""] * n
             taxim_vals = [
                 str(v).strip() if v is not None and str(v) not in ("nan","None","") else ""
-                for v in df.get("TAXIM", [""] * n)
+                for v in df["TAXIM"].tolist()
             ] if "TAXIM" in df.columns else [""] * n
             st.session_state.materiales[f"EKGRP_{werks}"] = ekgrp_vals
             st.session_state.materiales[f"TAXIM_{werks}"] = taxim_vals
+
+    # TAXIM_SUC_znoa para ZNOA
+    if cfg.get("ZNOA_incluye_sucursales_en_CL"):
+        if "TAXIM" in df.columns:
+            taxim_vals = [
+                str(v).strip() if v is not None and str(v) not in ("nan","None","") else "1"
+                for v in df["TAXIM"].tolist()
+            ]
+            st.session_state.materiales["TAXIM_SUC_znoa"] = taxim_vals
+        else:
+            st.session_state.materiales["TAXIM_SUC_znoa"] = ["1"] * n
 
     return True, ""

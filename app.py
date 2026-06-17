@@ -1,8 +1,8 @@
 from pathlib import Path
+from io import BytesIO
 import streamlit as st
 import pandas as pd
 
-from config import TIPOS_MATERIAL, CENTRO_BENEFICIO_MAP
 from config import TIPOS_MATERIAL, CENTRO_BENEFICIO_MAP, CENTROS_DISPONIBLES
 
 from ui.helpers import load_css
@@ -10,32 +10,17 @@ from ui.layout import (
     shell_bar,
     breadcrumb,
     page_title,
-    context_bar,
     section_open,
     section_close,
-    section_header_inline,
-)
-from ui.components import (
-    status_bar,
-    bloque_fijos,
-    campo_editable,
-    simple_table,
-    section_message,
-    barra_generacion,
 )
 
 from core.state import (
     init_state,
-    get_n,
-    get_mats,
-    inicializar_materiales,
     reset_state,
     cargar_desde_excel_preparado,
 )
-from core.preparar import procesar
-from core.validators import validar
+from core.preparar import procesar, _detectar_formato
 from core.generators import generar_zip
-from core.tabs import tabs_para_flujo
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -52,16 +37,12 @@ st.set_page_config(
 load_css("assets/styles.css")
 init_state()
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Shell bar (siempre visible)
-# ─────────────────────────────────────────────────────────────────────────────
-
 shell_bar()
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Selector de modo principal
 # ─────────────────────────────────────────────────────────────────────────────
+
 if "modo" not in st.session_state:
     st.session_state.modo = "ampliar"
 
@@ -72,6 +53,7 @@ if col_m1.button(
     use_container_width=True,
 ):
     st.session_state.modo = "ampliar"
+    reset_state()
     st.rerun()
 if col_m2.button(
     "⚙️ Preparar materiales",
@@ -87,30 +69,38 @@ st.markdown("")
 # ─────────────────────────────────────────────────────────────────────────────
 # MODO: PREPARAR MATERIALES
 # ─────────────────────────────────────────────────────────────────────────────
+
 if st.session_state.modo == "preparar":
 
     breadcrumb("Preparar materiales")
     page_title("Gestión de materiales", "⚙️ Preparar materiales para la app")
 
     section_open("Archivos de entrada", "📂")
-
     st.markdown('<div class="sap-table-label">Excel de altas (hoja ABM)</div>',
                 unsafe_allow_html=True)
     archivo_altas = st.file_uploader(
         "altas", type=["xlsx"], label_visibility="collapsed",
         key="up_altas"
     )
-
     section_close()
 
     CONV_PATH = Path("Conversion_Materiales_SAP.xlsx")
+
     if archivo_altas:
         if not CONV_PATH.exists():
             st.error("No se encontró 'Conversion_Materiales_SAP.xlsx' en la carpeta del proyecto.")
             st.stop()
+
+        bytes_altas = archivo_altas.read()
+
         section_open("Vista previa", "👁")
         try:
-            df_prev = pd.read_excel(archivo_altas, sheet_name="ABM", header=2, dtype=str)
+            fmt_altas = _detectar_formato(bytes_altas)
+            if fmt_altas == "nuevo":
+                df_prev = pd.read_excel(BytesIO(bytes_altas), sheet_name="ABM", header=1, dtype=str)
+                df_prev["ID_CATEGORIA"] = df_prev["Category2"].str.extract(r"^(J\d{4})", expand=False)
+            else:
+                df_prev = pd.read_excel(BytesIO(bytes_altas), sheet_name="ABM", header=2, dtype=str)
             df_prev = df_prev[
                 df_prev["ID_CATEGORIA"].notna() &
                 df_prev["ID_CATEGORIA"].str.match(r"^J\d{4}$", na=False)
@@ -118,15 +108,18 @@ if st.session_state.modo == "preparar":
             st.caption(f"{len(df_prev)} materiales detectados en el archivo.")
             df_prev_display = df_prev[["ID_CATEGORIA", "NOMBRE MATERIAL SAP",
                                        "Volumen (CM3)", "E-Commerce", "IVA"]].head(10).copy()
-            df_prev_display["Volumen (CM3)"] = df_prev_display["Volumen (CM3)"].apply(
-                lambda v: f"{float(str(v).replace(',', '.')):.2f}".rstrip("0").rstrip(".")
-                if v and str(v).strip() not in ("", "nan") else v
-            )
-            st.dataframe(
-                df_prev_display,
-                use_container_width=True, hide_index=True,
-            )
-            archivo_altas.seek(0)
+            def _fmt_volumen(v):
+                if not v or str(v).strip() in ("", "nan"):
+                    return v
+                import re
+                s = str(v).strip().replace(",", ".")
+                m = re.search(r"\d+(\.\d+)?", s)
+                if not m:
+                    return v
+                num = float(m.group())
+                return str(int(num)) if num == int(num) else str(num)
+            df_prev_display["Volumen (CM3)"] = df_prev_display["Volumen (CM3)"].apply(_fmt_volumen)
+            st.dataframe(df_prev_display, use_container_width=True, hide_index=True)
         except Exception as e:
             st.warning(f"No se pudo previsualizar: {e}")
         section_close()
@@ -135,8 +128,7 @@ if st.session_state.modo == "preparar":
         if st.button("⚙️ Procesar y descargar", type="primary"):
             with st.spinner("Procesando..."):
                 try:
-                    bytes_altas = archivo_altas.read()
-                    bytes_conv  = CONV_PATH.read_bytes()
+                    bytes_conv = CONV_PATH.read_bytes()
                     excel_out, n_mats, advertencias = procesar(bytes_altas, bytes_conv)
 
                     st.success(f"✅ {n_mats} materiales procesados.")
@@ -159,673 +151,176 @@ if st.session_state.modo == "preparar":
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# PASO 1 — Configuración inicial
+# MODO: AMPLIACIÓN / MODIFICACIÓN — Paso 1: elegir operación
 # ─────────────────────────────────────────────────────────────────────────────
 
-if not st.session_state.configurado:
+breadcrumb("Ampliación / Modificación")
+page_title("Gestión de materiales", "Ampliación / Modificación masiva")
 
-    breadcrumb("Nueva operación")
-    page_title("Gestión de materiales", "Nueva operación masiva")
+if "flujo_sel" not in st.session_state:
+    st.session_state.flujo_sel = None
 
-    # ── Fila superior: 3 selectores ──────────────────────────────────────
-    col_op, col_mat, col_centros = st.columns([1, 1, 1], gap="medium")
+FLUJOS = {
+    "Ampliación centros logísticos":     {"icon": "🏭", "desc": "Hasta 8 vistas"},
+    "Ampliación sucursales":             {"icon": "🏪", "desc": "Todas las sucursales"},
+    "Ampliación sucursales específicas": {"icon": "🏪", "desc": "Sucursales seleccionadas"},
+    "Modificación datos básicos":        {"icon": "✏️",  "desc": "1 vista"},
+}
 
-    # ── Columna 1: Tipo de operación ──────────────────────────────────────
-    with col_op:
-        section_open("1. Tipo de operación", "📋")
-        FLUJOS = {
-            "Ampliación centros logísticos": {"icon": "🏭", "desc": "Hasta 8 vistas"},
-            "Ampliación sucursales":         {"icon": "🏪", "desc": "2–3 vistas"},
-            "Modificación datos básicos":    {"icon": "✏️",  "desc": "1 vista"},
-        }
-        for nombre, info in FLUJOS.items():
-            activo = st.session_state.flujo == nombre
-            if st.button(
-                f"{info['icon']}  {nombre}",
-                key=f"op_{nombre}",
-                use_container_width=True,
-                type="primary" if activo else "secondary",
-            ):
-                if st.session_state.flujo != nombre:
-                    st.session_state.flujo              = nombre
-                    st.session_state.tipo_mat           = None
-                    st.session_state.materiales         = {}
-                    st.session_state.n_mats             = 0
-                    st.session_state.centros_seleccionados = []
-                st.rerun()
-            st.caption(info["desc"])
-        section_close()
+section_open("1. Tipo de operación", "📋")
+cols_flujo = st.columns(4)
+for i, (nombre, info) in enumerate(FLUJOS.items()):
+    activo = st.session_state.flujo_sel == nombre
+    if cols_flujo[i].button(
+        f"{info['icon']}  {nombre}",
+        key=f"op_{nombre}",
+        use_container_width=True,
+        type="primary" if activo else "secondary",
+    ):
+        if st.session_state.flujo_sel != nombre:
+            st.session_state.flujo_sel = nombre
+            st.session_state.sucursales_especificas = []
+        st.rerun()
+    cols_flujo[i].caption(info["desc"])
+section_close()
 
-    # ── Columna 2: Tipo de material o archivo preparado ───────────────────
-    with col_mat:
-        es_CL = st.session_state.flujo == "Ampliación centros logísticos"
-
-        if es_CL:
-            section_open("2. Modo de ingreso", "📥")
-            modo_ingreso = st.radio(
-                "modo",
-                ["✏️ Elegir tipo y cargar MATNR", "📂 Subir archivo preparado"],
-                key="modo_ingreso_cl",
-                label_visibility="collapsed",
-            )
-            section_close()
-        else:
-            modo_ingreso = "✏️ Elegir tipo y cargar MATNR"
-
-        if not es_CL or modo_ingreso == "✏️ Elegir tipo y cargar MATNR":
-            section_open("2. Tipo de material" if not es_CL else "3. Tipo de material", "🏷️")
-            if st.session_state.flujo:
-                TIPOS_POR_FLUJO = {
-                    "Ampliación centros logísticos": list(TIPOS_MATERIAL.keys()),
-                    "Ampliación sucursales":         ["ZMED", "ZNOM", "ZINS", "ZSER_C", "ZSER_NC"],
-                    "Modificación datos básicos":    list(TIPOS_MATERIAL.keys()),
-                }
-                tipos_disp = TIPOS_POR_FLUJO[st.session_state.flujo]
-                cols_t = st.columns(2)
-                for i, t in enumerate(tipos_disp):
-                    activo = st.session_state.tipo_mat == t
-                    if cols_t[i % 2].button(
-                        t.replace("_", " "),
-                        key=f"chip_{t}",
-                        type="primary" if activo else "secondary",
-                        use_container_width=True,
-                    ):
-                        if st.session_state.tipo_mat != t:
-                            st.session_state.tipo_mat           = t
-                            st.session_state.materiales         = {}
-                            st.session_state.n_mats             = 0
-                            st.session_state.centros_seleccionados = []
-                        st.rerun()
-            else:
-                st.caption("Seleccioná una operación primero.")
-            section_close()
-
-    # ── Columna 3: Centros logísticos ─────────────────────────────────────
-    with col_centros:
-        es_CL = st.session_state.flujo == "Ampliación centros logísticos"
-        modo_actual = st.session_state.get("modo_ingreso_cl", "✏️ Elegir tipo y cargar MATNR")
-
-        if es_CL and modo_actual == "📂 Subir archivo preparado":
-            # Centros se detectan del archivo — no se muestran aquí
-            section_open("3. Centros", "📍")
-            st.caption("Se detectan automáticamente del archivo preparado.")
-            section_close()
-        else:
-            section_open("3. Centros logísticos", "📍")
-            if es_CL and st.session_state.tipo_mat:
-                centros_disp = CENTROS_DISPONIBLES.get(st.session_state.tipo_mat, [])
-                st.caption("Seleccioná en qué centros ampliar.")
-                for centro in centros_disp:
-                    activo = centro in st.session_state.centros_seleccionados
-                    if st.button(
-                        f"{'✅' if activo else '⬜'}  {centro}",
-                        key=f"btn_centro_{centro}",
-                        use_container_width=True,
-                        type="primary" if activo else "secondary",
-                    ):
-                        nuevos = list(st.session_state.centros_seleccionados)
-                        if centro in nuevos:
-                            nuevos.remove(centro)
-                        else:
-                            nuevos.append(centro)
-                        st.session_state.centros_seleccionados = nuevos
-                        st.rerun()
-                if not st.session_state.centros_seleccionados:
-                    st.caption("⚠️ Seleccioná al menos un centro.")
-            elif not es_CL and st.session_state.flujo:
-                st.caption("No aplica para este flujo.")
-            else:
-                st.caption("Seleccioná operación y tipo primero.")
-            section_close()
-
-    # ── Fila inferior: ingreso de materiales ──────────────────────────────
-    es_CL = st.session_state.flujo == "Ampliación centros logísticos"
-    modo_actual = st.session_state.get("modo_ingreso_cl", "✏️ Elegir tipo y cargar MATNR")
-
-    if st.session_state.flujo and es_CL and modo_actual == "📂 Subir archivo preparado":
-        section_open("Archivo preparado (Excel)", "📂")
-        st.caption(
-            "Subí el Excel generado por 'Preparar materiales' con los MATNR ya completados. "
-            "Tipo de material y centros se detectan automáticamente del archivo."
-        )
-        archivo_prep = st.file_uploader(
-            "prep", type=["xlsx"], label_visibility="collapsed",
-            key="up_prep"
-        )
-        if archivo_prep:
-            try:
-                df_prep = pd.read_excel(archivo_prep, sheet_name="PARA_APP", dtype=str)
-                st.caption(f"{len(df_prep)} materiales detectados.")
-                st.dataframe(
-                    df_prep[["MATNR","Tipo material","MAKTX","Centros","EKGRP","TAXIM"]].head(5),
-                    use_container_width=True, hide_index=True,
-                )
-
-                if st.button("Continuar →", type="primary", use_container_width=True, key="btn_prep"):
-                    # Detectar tipo de material del archivo
-                    tipos = df_prep["Tipo material"].dropna().unique()
-                    if len(tipos) > 1:
-                        st.error(f"El archivo tiene múltiples tipos de material: {', '.join(tipos)}. Separá por tipo y volvé a subir.")
-                    else:
-                        tipo_detectado = tipos[0] if len(tipos) == 1 else ""
-                        if tipo_detectado not in TIPOS_MATERIAL:
-                            st.error(f"Tipo de material '{tipo_detectado}' no reconocido.")
-                        else:
-                            st.session_state.tipo_mat = tipo_detectado
-                            cfg_tmp = TIPOS_MATERIAL[tipo_detectado]
-                            exito, error = cargar_desde_excel_preparado(df_prep, cfg_tmp)
-                            if exito:
-                                st.session_state.configurado = True
-                                st.rerun()
-                            else:
-                                st.error(error)
-            except Exception as e:
-                st.error(f"Error al leer el archivo: {e}")
-        section_close()
-
-    elif st.session_state.flujo and st.session_state.tipo_mat:
-        section_open("Números de material (MATNR)", "🔢")
-        st.caption("Copiá y pegá desde Excel (una columna, un número por línea).")
-
-        col_area, col_btn = st.columns([4, 1])
-        with col_area:
-            texto_matnr = st.text_area(
-                label="matnr_input",
-                label_visibility="collapsed",
-                placeholder="4000039050\n4000038251\n4000038252\n...",
-                height=120,
-                key="input_matnr",
-            )
-        lineas_preview = [
-            l.strip()
-            for l in texto_matnr.replace("\t", "\n").splitlines()
-            if l.strip()
-        ]
-        with col_btn:
-            st.markdown("<div style='height:1.5rem'></div>", unsafe_allow_html=True)
-            sin_centros = (
-                es_CL and not st.session_state.centros_seleccionados
-            )
-            if st.button("Continuar →", type="primary", use_container_width=True,
-                         disabled=sin_centros or not lineas_preview):
-                cfg_tmp = TIPOS_MATERIAL[st.session_state.tipo_mat]
-                inicializar_materiales(lineas_preview, cfg_tmp)
-                st.session_state.configurado = True
-                st.rerun()
-            st.caption(f"{len(lineas_preview)} material(es)")
-        section_close()
-
+if not st.session_state.flujo_sel:
+    st.info("Seleccioná una operación para continuar.")
     st.stop()
 
+flujo_detectado = st.session_state.flujo_sel
+
 # ─────────────────────────────────────────────────────────────────────────────
-# PASO 2 — Formulario por vistas
+# Selector de sucursales específicas
 # ─────────────────────────────────────────────────────────────────────────────
 
-flujo    = st.session_state.flujo
-tipo_mat = st.session_state.tipo_mat
-cfg      = TIPOS_MATERIAL[tipo_mat]
-n        = get_n()
-mats     = get_mats()
-centros_sel = st.session_state.get("centros_seleccionados", [])
-
-# Breadcrumb y título
-breadcrumb(flujo)
-page_title(
-    f"Gestión de materiales — {tipo_mat.replace('_', ' ')}",
-    f"{flujo}",
-)
-
-# Barra de contexto + botón volver
-col_ctx, col_back = st.columns([8, 2])
-col_ctx.markdown("")          # separador visual
-context_bar(tipo_mat, flujo, n)
-
-if col_back.button("← Nueva operación", use_container_width=True):
-    reset_state()
-    st.rerun()
-
-# ─── Tabs ────────────────────────────────────────────────────────────────────
-
-nombres_tabs = tabs_para_flujo(flujo, cfg, centros_sel)
-tabs = st.tabs(nombres_tabs)
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# TAB: DATOS BÁSICOS
-# ══════════════════════════════════════════════════════════════════════════════
-
-with tabs[0]:
-
-    section_open("Datos básicos del material", "📄")
-
-    if flujo == "Ampliación sucursales":
-        section_message(
-            "info",
-            "Para sucursales la vista Datos básicos activa únicamente el flag "
-            "de almacenamiento. No se requieren campos adicionales.",
-        )
-        simple_table({
-            "MATNR": mats.get("MATNR", [""]*n),
-            "Vista almacenamiento": ["X"] * n,
-        })
-
+if flujo_detectado == "Ampliación sucursales específicas":
+    section_open("2. Sucursales a ampliar", "🏪")
+    sucursales_disponibles = sorted(CENTRO_BENEFICIO_MAP.keys())
+    sucursales_sel = st.multiselect(
+        "Seleccioná las sucursales:",
+        options=sucursales_disponibles,
+        default=st.session_state.get("sucursales_especificas", []),
+        key="ms_sucursales",
+    )
+    st.session_state.sucursales_especificas = sucursales_sel
+    if not sucursales_sel:
+        st.warning("⚠️ Seleccioná al menos una sucursal para continuar.")
     else:
-        campo_editable(
-            "Descripción", "MAKTX", tecnico="MAKTX",
-            ayuda="Nombre del material tal como aparecerá en SAP.",
-        )
-
-        if flujo == "Ampliación centros logísticos":
-            campo_editable(
-                "Grupo de productos", "MATKL", tecnico="MATKL",
-                ayuda="Ej: J0101, J0104, J0606.",
-            )
-            campo_editable(
-                "Jerarquía de productos", "PRDHA", tecnico="PRDHA",
-                ayuda="Ej: J010109, J010405.",
-            )
-            if cfg.get("VOLEH"):
-                campo_editable(
-                    "Volumen", "VOLUM", tipo="numero", tecnico="VOLUM",
-                    ayuda=f"En {cfg.get('VOLEH', 'CM3')}.",
-                )
-            if "SPART_opciones" in cfg:
-                campo_editable(
-                    "Partición", "SPART", tipo="select", tecnico="SPART",
-                    opciones=cfg["SPART_opciones"],
-                )
-
-        if flujo == "Modificación datos básicos":
-            mod_campos = cfg.get("MOD_campos", [])
-            if "PRDHA" in mod_campos:
-                campo_editable(
-                    "Jerarquía de productos", "PRDHA", tecnico="PRDHA",
-                    ayuda="Ej: J010109, J010405.",
-                )
-            if "VOLUM" in mod_campos:
-                campo_editable(
-                    "Volumen", "VOLUM", tipo="numero", tecnico="VOLUM",
-                    ayuda=f"En {cfg.get('VOLEH', 'CM3')}.",
-                )
-
-        campo_editable(
-            "Texto largo", "TEXTO_LARGO",
-            ayuda="Si se deja vacío se usa la descripción (MAKTX).",
-        )
-        campo_editable(
-            "Estado del material", "MSTAE", tipo="checkbox", tecnico="MSTAE",
-        )
-
-        # Checkbox Trazable — solo para ZMED en ampliación centros logísticos
-        if cfg.get("MTART") == "ZMED" and flujo == "Ampliación centros logísticos":
-            campo_editable(
-                "Trazable", "TRAZABLE", tipo="checkbox", tecnico="SERIAL / SERNP",
-                ayuda="Si está activo, se asigna perfil serie TRAZ (datos básicos y datos de centro).",
-            )
-
-        # Valores fijos — SERIAL se muestra dinámicamente según trazabilidad
-        fijos_keys = ("MTART","SPART","XCHPF","MTPOS","VOLEH","EKWSL","TRAGR","IPRKZ","MHDRZ")
-        fijos = {k: v for k, v in cfg.items() if k in fijos_keys and v}
-        if cfg.get("MTART") == "ZMED":
-            serial_val = "TRAZ" if (mats.get("TRAZABLE", [True])[0] if n > 0 else True) else ""
-            if serial_val:
-                fijos["SERIAL"] = serial_val
-        elif cfg.get("SERIAL"):
-            fijos["SERIAL"] = cfg["SERIAL"]
-        if fijos:
-            bloque_fijos("Datos básicos", fijos)
-
+        st.caption(f"{len(sucursales_sel)} sucursal(es): {', '.join(sucursales_sel)}")
     section_close()
-    barra_generacion("basicos", flujo, cfg)
 
+    if not st.session_state.get("sucursales_especificas"):
+        st.stop()
+else:
+    st.session_state.sucursales_especificas = []
 
-# ══════════════════════════════════════════════════════════════════════════════
-# TAB: DATOS DE CENTRO
-# ══════════════════════════════════════════════════════════════════════════════
+# ─────────────────────────────────────────────────────────────────────────────
+# Subir archivo preparado
+# ─────────────────────────────────────────────────────────────────────────────
 
-if "Datos de centro" in nombres_tabs:
+paso_archivo = "3." if flujo_detectado == "Ampliación sucursales específicas" else "2."
 
-    with tabs[nombres_tabs.index("Datos de centro")]:
+section_open(f"{paso_archivo} Archivo preparado (Excel)", "📂")
+st.caption(
+    "Subí el Excel generado por 'Preparar materiales' con los MATNR y todos los datos completados."
+)
+archivo_prep = st.file_uploader(
+    "prep", type=["xlsx"], label_visibility="collapsed",
+    key=f"up_prep_{flujo_detectado}",
+)
+section_close()
 
-        if flujo == "Ampliación centros logísticos":
+if not archivo_prep:
+    st.info("📂 Subí el archivo preparado para continuar.")
+    st.stop()
 
-            centros_activos = [
-                c for c in cfg.get("CL_centros", [])
-                if c["WERKS"] in centros_sel
-            ]
+# ── Leer y validar ────────────────────────────────────────────────────────────
 
-            # Verificar si todos los centros activos comparten las mismas opciones
-            ekgrp_opciones_set = set(
-                tuple(c["ekgrp_opciones"])
-                for c in centros_activos if "ekgrp_opciones" in c
+try:
+    df_prep = pd.read_excel(archivo_prep, sheet_name="PARA_APP", dtype=str)
+except Exception as e:
+    st.error(f"Error al leer el archivo: {e}")
+    st.stop()
+
+cols_requeridas = {"MATNR", "Tipo material"}
+faltantes = cols_requeridas - set(df_prep.columns)
+if faltantes:
+    st.error(f"El archivo no tiene las columnas requeridas: {', '.join(sorted(faltantes))}.")
+    st.stop()
+
+sin_matnr = df_prep["MATNR"].isna() | (df_prep["MATNR"].astype(str).str.strip() == "")
+if sin_matnr.any():
+    st.error(f"❌ {sin_matnr.sum()} material(es) sin MATNR.")
+    st.stop()
+
+tipos = df_prep["Tipo material"].dropna().unique()
+if len(tipos) == 0:
+    st.error("No se detectó ningún tipo de material en el archivo.")
+    st.stop()
+if len(tipos) > 1:
+    st.error(f"El archivo tiene múltiples tipos de material: {', '.join(tipos)}. Separalos por tipo.")
+    st.stop()
+tipo_detectado = tipos[0].strip()
+if tipo_detectado not in TIPOS_MATERIAL:
+    st.error(f"Tipo de material '{tipo_detectado}' no reconocido.")
+    st.stop()
+
+TIPOS_POR_FLUJO = {
+    "Ampliación centros logísticos":     list(TIPOS_MATERIAL.keys()),
+    "Ampliación sucursales":             ["ZMED", "ZNOM", "ZINS", "ZSER_C", "ZSER_NC"],
+    "Ampliación sucursales específicas": ["ZMED", "ZNOM", "ZINS", "ZSER_C", "ZSER_NC"],
+    "Modificación datos básicos":        list(TIPOS_MATERIAL.keys()),
+}
+if tipo_detectado not in TIPOS_POR_FLUJO[flujo_detectado]:
+    st.error(f"El tipo '{tipo_detectado}' no es compatible con '{flujo_detectado}'.")
+    st.stop()
+
+cfg = TIPOS_MATERIAL[tipo_detectado]
+
+# ── Vista previa ─────────────────────────────────────────────────────────────
+
+paso_prev = "4." if flujo_detectado == "Ampliación sucursales específicas" else "3."
+
+section_open(f"{paso_prev} Vista previa", "👁")
+cols_preview = [c for c in ["MATNR", "Tipo material", "MAKTX", "Centros", "EKGRP", "TAXIM"] if c in df_prep.columns]
+st.caption(f"**{len(df_prep)} materiales** · Tipo: **{tipo_detectado}** · Operación: **{flujo_detectado}**")
+st.dataframe(df_prep[cols_preview].head(10), use_container_width=True, hide_index=True)
+section_close()
+
+# ── Generar ───────────────────────────────────────────────────────────────────
+
+paso_gen = "5." if flujo_detectado == "Ampliación sucursales específicas" else "4."
+
+section_open(f"{paso_gen} Generar archivos SAP", "⚙️")
+
+if st.button("⚙️ Generar y descargar .txt", type="primary", use_container_width=True):
+    with st.spinner("Generando archivos..."):
+        try:
+            exito, error = cargar_desde_excel_preparado(df_prep, cfg)
+            if not exito:
+                st.error(error)
+                st.stop()
+
+            st.session_state.tipo_mat = tipo_detectado
+            st.session_state.flujo    = flujo_detectado
+
+            zip_bytes, archivos = generar_zip(flujo_detectado, cfg)
+
+            st.success(f"✅ {len(df_prep)} materiales · {len(archivos)} archivo(s) generado(s).")
+            for nombre in archivos:
+                st.caption(f"  📄 {nombre}")
+
+            ts = pd.Timestamp.now().strftime("%Y%m%d_%H%M")
+            st.download_button(
+                label=f"⬇️ Descargar ZIP ({len(archivos)} archivos)",
+                data=zip_bytes,
+                file_name=f"SAP_{tipo_detectado}_{ts}.zip",
+                mime="application/zip",
+                key="dl_zip",
             )
-            taxim_opciones_set = set(
-                tuple(c["taxim_opciones"])
-                for c in centros_activos if "taxim_opciones" in c
-            )
-            compartir_ekgrp = len(ekgrp_opciones_set) == 1
-            compartir_taxim = len(taxim_opciones_set) == 1
+        except Exception as e:
+            st.error(f"Error al generar: {e}")
+            raise e
 
-            if len(centros_activos) > 1 and (compartir_ekgrp or compartir_taxim):
-                # Mostrar campos una sola vez con etiqueta genérica
-                centros_label = " / ".join(c["WERKS"] for c in centros_activos)
-                section_open(f"Centros {centros_label}", "📍")
-                st.caption("Los valores se aplicarán a todos los centros seleccionados.")
-
-                if compartir_ekgrp and ekgrp_opciones_set:
-                    opciones_ekgrp = [""] + list(list(ekgrp_opciones_set)[0])
-                    campo_editable(
-                        "Grupo de compra", "EKGRP_TODOS",
-                        tipo="select", tecnico="EKGRP",
-                        opciones=opciones_ekgrp,
-                    )
-                    # Propagar a todos los centros
-                    val = st.session_state.materiales.get("EKGRP_TODOS", [""] * n)
-                    for c in centros_activos:
-                        st.session_state.materiales[f"EKGRP_{c['WERKS']}"] = list(val)
-
-                if compartir_taxim and taxim_opciones_set:
-                    opciones_taxim = list(list(taxim_opciones_set)[0])
-                    campo_editable(
-                        "Indicador de impuestos", "TAXIM_TODOS",
-                        tipo="select", tecnico="TAXIM",
-                        opciones=opciones_taxim,
-                    )
-                    val = st.session_state.materiales.get("TAXIM_TODOS", [""] * n)
-                    for c in centros_activos:
-                        st.session_state.materiales[f"TAXIM_{c['WERKS']}"] = list(val)
-
-                # Valores fijos: mostrar los de todos los centros juntos
-                for c in centros_activos:
-                    fijos_c = {
-                        f"{k} ({c['WERKS']})": v for k, v in c.items()
-                        if k not in ("WERKS","ekgrp_opciones","taxim_opciones","KOKRS","PRCTR")
-                        and v
-                    }
-                    if fijos_c:
-                        bloque_fijos(f"Valores fijos — {c['WERKS']}", fijos_c)
-
-                section_close()
-                st.markdown("")
-
-            else:
-                # Centros con opciones distintas → mostrar por separado
-                for centro in centros_activos:
-                    werks = centro["WERKS"]
-                    section_open(f"Centro {werks}", "📍")
-
-                    if "ekgrp_opciones" in centro:
-                        campo_editable(
-                            "Grupo de compra", f"EKGRP_{werks}",
-                            tipo="select", tecnico="EKGRP",
-                            opciones=[""] + centro["ekgrp_opciones"],
-                        )
-                    if "taxim_opciones" in centro:
-                        campo_editable(
-                            "Indicador de impuestos", f"TAXIM_{werks}",
-                            tipo="select", tecnico="TAXIM",
-                            opciones=centro["taxim_opciones"],
-                        )
-
-                    fijos_c = {
-                        k: v for k, v in centro.items()
-                        if k not in ("WERKS","ekgrp_opciones","taxim_opciones","KOKRS","PRCTR")
-                        and v
-                    }
-                    if fijos_c:
-                        bloque_fijos(f"Centro {werks}", fijos_c)
-
-                    section_close()
-                    st.markdown("")
-
-            # Sucursales ZNOA — fuera del loop, se renderiza una sola vez
-            if cfg.get("ZNOA_incluye_sucursales_en_CL"):
-                section_open("Sucursales (~70 centros)", "🏪")
-                st.caption(
-                    f"Se agregarán {len(CENTRO_BENEFICIO_MAP)} sucursales al mismo archivo. "
-                    "EKGRP = 007 y KAUTB = X son fijos."
-                )
-                campo_editable(
-                    "Indicador de impuestos — Sucursales", "TAXIM_SUC_znoa",
-                    tipo="select",
-                    opciones=[str(i) for i in range(1, 7)],
-                    tecnico="TAXIM",
-                    ayuda="Se aplica a todas las sucursales.",
-                )
-                section_close()
-
-        elif flujo == "Ampliación sucursales":
-
-            section_open("Mapa de centros de sucursales", "🗺️")
-
-            st.caption(
-                f"Se generarán {len(CENTRO_BENEFICIO_MAP)} filas por material. "
-                "Sociedad CO y Centro de beneficio provienen del mapa configurado."
-            )
-            simple_table(
-                [
-                    {
-                        "Centro (WERKS)": k,
-                        "Sociedad CO (KOKRS)": v["KOKRS"],
-                        "Centro beneficio (PRCTR)": v["PRCTR"],
-                    }
-                    for k, v in CENTRO_BENEFICIO_MAP.items()
-                ],
-                height=300,
-            )
-
-            if cfg.get("SUC_datos_centro"):
-                bloque_fijos("Valores adicionales", {
-                    "EKGRP": cfg.get("SUC_ekgrp", ""),
-                    "KAUTB": cfg.get("SUC_kautb", ""),
-                    "TAXIM": cfg.get("SUC_taxim", ""),
-                })
-
-            section_close()
-
-        barra_generacion("centro", flujo, cfg)
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# TAB: CADENAS DE DISTRIBUCIÓN
-# ══════════════════════════════════════════════════════════════════════════════
-
-if "Cadenas de distribución" in nombres_tabs:
-
-    with tabs[nombres_tabs.index("Cadenas de distribución")]:
-
-        section_open("Cadenas de distribución", "🔗")
-
-        opciones_k = cfg.get("CL_ktgrm_opciones", ["01"])
-        campo_editable(
-            "Grupo de imputación", "KTGRM",
-            tipo="select", tecnico="KTGRM",
-            opciones=opciones_k,
-            ayuda="Se aplica a todas las filas de cadenas de este material.",
-        )
-
-        st.markdown("")
-        section_message("info", "La estructura de cadenas es fija por tipo de material.")
-
-        filas_c = [
-            {
-                "VKORG": c["VKORG"],
-                "VTWEG": canal,
-                "DWERK": c["DWERK"],
-                "MTPOS": c["MTPOS"],
-                "KTGRM": opciones_k[0],
-                "PRODH": "(jerarquía del material)",
-            }
-            for c in cfg.get("CL_cadenas", [])
-            if not centros_sel or c["DWERK"] in centros_sel
-            for canal in c["canales"]
-        ]
-        if filas_c:
-            simple_table(filas_c)
-
-        section_close()
-        barra_generacion("cadenas", flujo, cfg)
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# TAB: CLASIFICACIÓN FISCAL
-# ══════════════════════════════════════════════════════════════════════════════
-
-if "Clasificación fiscal" in nombres_tabs:
-
-    with tabs[nombres_tabs.index("Clasificación fiscal")]:
-
-        section_open("Clasificación fiscal", "🧾")
-
-        fiscal = cfg.get("CL_fiscal", {})
-        section_message(
-            "info",
-            "Clasificación fiscal generada automáticamente por tipo de material.",
-        )
-        bloque_fijos("Valores fiscales", {
-            "País/Región (ALAND)":       "AR",
-            "Clase impuesto 1 (TATYP1)": "J1AU",
-            "Clasif. fiscal 1 (TAXM1)":  fiscal.get("TAXM1", ""),
-            "Clase impuesto 2 (TATYP2)": "J901",
-            "Clasif. fiscal 2 (TAXM2)":  fiscal.get("TAXM2", ""),
-        })
-        simple_table({
-            "MATNR":  mats.get("MATNR", [""]*n),
-            "ALAND":  ["AR"] * n,
-            "TATYP1": ["J1AU"] * n,
-            "TAXM1":  [fiscal.get("TAXM1", "")] * n,
-            "TATYP2": ["J901"] * n,
-            "TAXM2":  [fiscal.get("TAXM2", "")] * n,
-        })
-
-        section_close()
-        barra_generacion("fiscal", flujo, cfg)
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# TAB: DATOS DE PREVISIÓN
-# ══════════════════════════════════════════════════════════════════════════════
-
-if "Datos de previsión" in nombres_tabs:
-
-    with tabs[nombres_tabs.index("Datos de previsión")]:
-
-        section_open("Datos de previsión", "📈")
-
-        section_message("info", "Centro A130 — Modelo de pronóstico: J. Valores fijos.")
-        simple_table({
-            "MATNR": mats.get("MATNR", [""]*n),
-            "WERKS": ["A130"] * n,
-            "PRMOD": ["J"] * n,
-        })
-
-        section_close()
-        barra_generacion("prevision", flujo, cfg)
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# TAB: LUGARES DE ALMACENAMIENTO
-# ══════════════════════════════════════════════════════════════════════════════
-
-if "Lugares de almacenamiento" in nombres_tabs:
-
-    with tabs[nombres_tabs.index("Lugares de almacenamiento")]:
-
-        section_open("Lugares de almacenamiento", "🏗️")
-
-        section_message(
-            "info",
-            "Ubicaciones asignadas automáticamente por tipo de material y centro.",
-        )
-        lugares = cfg.get("CL_lugares", {})
-        filas_l = [
-            {"MATNR": m, "WERKS": w, "LGORT": lg}
-            for m in mats.get("MATNR", [])
-            for w, locs in lugares.items()
-            if not centros_sel or w in centros_sel
-            for lg in locs
-        ]
-        if filas_l:
-            simple_table(filas_l, height=300)
-
-        section_close()
-        barra_generacion("lugares", flujo, cfg)
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# TAB: ÁREA PLANIF. MRP
-# ══════════════════════════════════════════════════════════════════════════════
-
-if "Área planif. MRP" in nombres_tabs:
-
-    with tabs[nombres_tabs.index("Área planif. MRP")]:
-
-        section_open("Área de planificación MRP", "📊")
-
-        section_message("info", "Centro A130 — Área A130_0040. Valores fijos del sistema.")
-        bloque_fijos("Área planif. MRP", {
-            "WERKS": "A130", "BERID": "A130_0040",
-            "DISMM": "V1",   "DISPO": "Z01",
-            "DISGR": "0000", "MINBE": "10",
-            "DISLS": "EX",   "BSTMI": "1",
-            "PLIFZ": "4",    "MODAV": "2",
-            "KZINI": "X",    "PRMOD": "J",
-            "SIGGR": "4",    "PERAN": "60",
-            "ANZPR": "12",   "AUTRU": "X",
-        })
-        simple_table({
-            "MATNR": mats.get("MATNR", [""]*n),
-            "WERKS": ["A130"] * n,
-            "BERID": ["A130_0040"] * n,
-            "DISMM": ["V1"] * n,
-            "DISPO": ["Z01"] * n,
-        })
-
-        section_close()
-        barra_generacion("planif", flujo, cfg)
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# TAB: DATOS DE VALORACIÓN
-# ══════════════════════════════════════════════════════════════════════════════
-
-if "Datos de valoración" in nombres_tabs:
-
-    with tabs[nombres_tabs.index("Datos de valoración")]:
-
-        section_open("Datos de valoración", "💰")
-
-        section_message("info", "Valores de valoración fijos por tipo de material.")
-
-        if flujo == "Ampliación centros logísticos":
-            val_cfg = cfg.get("CL_valoracion", [])
-            filas_v = [
-                {
-                    "MATNR": m,
-                    "BWKEY": v["BWKEY"],
-                    "BKLAS": v["BKLAS"],
-                    "VPRSV": v["VPRSV"],
-                    "VERPR": v.get("VERPR", ""),
-                    "STPRS": v.get("STPRS", ""),
-                }
-                for m in mats.get("MATNR", [])
-                for v in val_cfg
-                if not centros_sel or v["BWKEY"] in centros_sel
-            ]
-            if filas_v:
-                simple_table(filas_v, height=250)
-
-        elif flujo == "Ampliación sucursales":
-            st.caption(
-                f"Se generarán {len(CENTRO_BENEFICIO_MAP)} filas por material "
-                "(una por cada sucursal)."
-            )
-            bloque_fijos("Valoración sucursales", {
-                "BKLAS": cfg.get("SUC_bklas", ""),
-                "VPRSV": cfg.get("SUC_vprsv", ""),
-                "VERPR": cfg.get("SUC_verpr", ""),
-                "PEINH": cfg.get("SUC_peinh", "1"),
-            })
-
-        section_close()
-        barra_generacion("valoracion", flujo, cfg)
+section_close()

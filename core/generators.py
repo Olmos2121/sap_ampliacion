@@ -20,10 +20,6 @@ from core.state import get_mats, get_n, resolver_mstae
 
 
 def construir_lista(n: int, mats: dict, cfg: dict) -> list[dict]:
-    """
-    Convierte el estado de materiales (listas por campo) en una
-    lista de dicts, uno por material, lista para pasar a los generadores.
-    """
     lista = []
 
     for i in range(n):
@@ -56,11 +52,6 @@ def construir_lista(n: int, mats: dict, cfg: dict) -> list[dict]:
 
 
 def generar_zip(flujo: str, cfg: dict) -> tuple[bytes, dict]:
-    """
-    Genera todos los .txt correspondientes al flujo y tipo de material,
-    los empaqueta en un ZIP en memoria y lo devuelve.
-    Retorna (bytes_del_zip, dict_nombre→bytes_del_txt).
-    """
     import streamlit as st
     centros = st.session_state.get("centros_seleccionados", None) or None
 
@@ -72,9 +63,7 @@ def generar_zip(flujo: str, cfg: dict) -> tuple[bytes, dict]:
     # ── Ampliación centros logísticos ─────────────────────────────────────
     if flujo == "Ampliación centros logísticos":
 
-        archivos["Datos_basicos.txt"] = gen_datos_basicos(
-            lista, cfg, "vistas_CL"
-        )
+        archivos["Datos_basicos.txt"] = gen_datos_basicos(lista, cfg, "vistas_CL")
 
         if cfg.get("ZNOA_incluye_sucursales_en_CL"):
             archivos["Datos_de_centro.txt"] = gen_datos_centro_ZNOA(lista, cfg, centros)
@@ -101,29 +90,36 @@ def generar_zip(flujo: str, cfg: dict) -> tuple[bytes, dict]:
         else:
             r = gen_datos_valoracion(lista, cfg, "CL_valoracion", centros)
             if r: archivos["Datos_valoracion.txt"] = r
-    
-    # ── Ampliación sucursales ─────────────────────────────────────────────
+
+    # ── Ampliación sucursales (todas) ─────────────────────────────────────
     elif flujo == "Ampliación sucursales":
 
-        archivos["Datos_basicos.txt"] = gen_datos_basicos(
-            lista, cfg, "vistas_SUC"
-        )
-
+        archivos["Datos_basicos.txt"] = gen_datos_basicos(lista, cfg, "vistas_SUC")
         archivos["Datos_de_centro.txt"] = gen_datos_centro_SUC(lista, cfg)
 
         r = gen_datos_valoracion_SUC(lista, cfg)
         if r: archivos["Datos_valoracion.txt"] = r
 
+    # ── Ampliación sucursales específicas ─────────────────────────────────
+    elif flujo == "Ampliación sucursales específicas":
+
+        sucursales_sel = st.session_state.get("sucursales_especificas", [])
+        from config import CENTRO_BENEFICIO_MAP as _CBM
+        mapa_filtrado = {k: v for k, v in _CBM.items() if k in sucursales_sel}
+
+        archivos["Datos_basicos.txt"] = gen_datos_basicos(lista, cfg, "vistas_SUC")
+        archivos["Datos_de_centro.txt"] = gen_datos_centro_SUC(lista, cfg, mapa_filtrado)
+
+        r = gen_datos_valoracion_SUC(lista, cfg, mapa_filtrado)
+        if r: archivos["Datos_valoracion.txt"] = r
+
     # ── Modificación datos básicos ────────────────────────────────────────
     elif flujo == "Modificación datos básicos":
 
-        archivos["Datos_basicos.txt"] = gen_datos_basicos(
-            lista, cfg, "vistas_MOD"
-        )
+        archivos["Datos_basicos.txt"] = gen_datos_basicos(lista, cfg, "vistas_MOD")
 
     # ── Empaquetar en ZIP ─────────────────────────────────────────────────
     buf = BytesIO()
-
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         for nombre, contenido in archivos.items():
             zf.writestr(nombre, contenido)

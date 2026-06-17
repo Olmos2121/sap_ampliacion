@@ -52,6 +52,20 @@ def normalizar_iva(valor: str) -> str:
     v = str(valor).strip().lower().replace("%", "").replace(",", ".")
     return IVA_A_TAXIM.get(v, "")
 
+def extraer_numero(valor) -> str:
+    """Extrae solo la parte numérica de un valor de volumen.
+    Ej: '150cm3' → '150', '250 ML' → '250', '30,5' → '30.5', '30.50' → '30.5'
+    """
+    if valor is None or (isinstance(valor, float) and pd.isna(valor)):
+        return ""
+    s = str(valor).strip().replace(",", ".")
+    match = re.search(r"\d+(\.\d+)?", s)
+    if not match:
+        return ""
+    num = float(match.group())
+    # Eliminar decimales innecesarios: 150.0 → '150', 30.5 → '30.5'
+    return str(int(num)) if num == int(num) else str(num)
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Lectura
@@ -66,8 +80,29 @@ def leer_tabla_conversion(archivo_bytes: bytes) -> pd.DataFrame:
     return conv.set_index("ID_CATEGORIA")
 
 
+def _detectar_formato(archivo_bytes: bytes) -> str:
+    """
+    Detecta si el archivo es formato viejo (header=2, columna ID_CATEGORIA)
+    o nuevo (header=1, columna Category2 con 'J0101-NOMBRE').
+    Retorna 'viejo' o 'nuevo'.
+    """
+    df_probe = pd.read_excel(BytesIO(archivo_bytes), sheet_name="ABM", header=1, dtype=str, nrows=1)
+    if "Category2" in df_probe.columns:
+        return "nuevo"
+    return "viejo"
+
+
 def leer_materiales(archivo_bytes: bytes) -> pd.DataFrame:
-    df = pd.read_excel(BytesIO(archivo_bytes), sheet_name="ABM", header=2, dtype=str)
+    fmt = _detectar_formato(archivo_bytes)
+
+    if fmt == "nuevo":
+        df = pd.read_excel(BytesIO(archivo_bytes), sheet_name="ABM", header=1, dtype=str)
+        df["ID_CATEGORIA"] = df["Category2"].str.extract(r"^(J\d{4})", expand=False)
+        df["_PRDHA_nuevo"] = df["Category3"].str.extract(r"^(J\d{6})", expand=False)
+    else:
+        df = pd.read_excel(BytesIO(archivo_bytes), sheet_name="ABM", header=2, dtype=str)
+        df["_PRDHA_nuevo"] = None
+
     df = df[
         df["ID_CATEGORIA"].notna() &
         df["ID_CATEGORIA"].str.match(r"^J\d{4}$", na=False)
@@ -86,20 +121,23 @@ def transformar(df_mats: pd.DataFrame, conv: pd.DataFrame) -> pd.DataFrame:
         regla   = conv.loc[id_cat] if id_cat in conv.index else None
 
         nombre_sap  = limpiar_texto(row.get("NOMBRE MATERIAL SAP", ""))
-        volumen     = limpiar_texto(row.get("Volumen (CM3)", ""))
+        volumen     = extraer_numero(row.get("Volumen (CM3)", ""))
         iva_raw     = limpiar_texto(row.get("IVA", ""))
         ecommerce   = limpiar_texto(row.get("E-Commerce", ""), default="No especificado").upper()
         if ecommerce == "":
             ecommerce = "No especificado"
         trazable_raw = limpiar_texto(row.get("Trazable", ""), default="").upper()
         trazable    = "SI" if trazable_raw == "SI" else "NO"
-        prdha       = limpiar_texto(row.get("Unnamed: 4", ""))
+
+        # PRDHA: en formato nuevo viene de _PRDHA_nuevo (Category3), en viejo de Unnamed: 4
+        prdha_nuevo = limpiar_texto(row.get("_PRDHA_nuevo", ""))
+        prdha       = prdha_nuevo if prdha_nuevo else limpiar_texto(row.get("Unnamed: 4", ""))
         matkl       = id_cat
 
-        zmat    = regla["ZMAT"]      if regla is not None else ""
-        spart   = regla["SPART"]     if regla is not None else ""
+        zmat    = regla["ZMAT"]       if regla is not None else ""
+        spart   = regla["SPART"]      if regla is not None else ""
         centro  = regla["CENTRO_SUM"] if regla is not None else ""
-        ekgrp   = regla["EKGRP"]     if regla is not None else ""
+        ekgrp   = regla["EKGRP"]      if regla is not None else ""
         taxim   = normalizar_iva(iva_raw)
 
         # Centros
@@ -130,6 +168,7 @@ def transformar(df_mats: pd.DataFrame, conv: pd.DataFrame) -> pd.DataFrame:
             "TAXIM":              taxim or "No especificado",
             "E-Commerce":         ecommerce,
             "Trazable":           trazable,
+            "MSTAE":              "SI",
             "Centros":            centros_str,
             "KTGRM":              ktgrm,
             "_ktgrm_pendiente":   ktgrm_pendiente,
@@ -146,7 +185,7 @@ def transformar(df_mats: pd.DataFrame, conv: pd.DataFrame) -> pd.DataFrame:
 def generar_excel(df: pd.DataFrame) -> bytes:
     cols_app = ["MATNR", "Tipo material", "MAKTX", "TEXTO_LARGO",
                 "MATKL", "PRDHA", "VOLUM", "SPART", "EKGRP",
-                "TAXIM", "E-Commerce", "Trazable", "Centros", "KTGRM"]
+                "TAXIM", "E-Commerce", "Trazable", "MSTAE", "Centros", "KTGRM"]
     df_app = df[cols_app].copy()
 
     HEADER_FILL  = PatternFill("solid", fgColor="0A6ED1")
@@ -159,7 +198,7 @@ def generar_excel(df: pd.DataFrame) -> bytes:
     anchos = {
         "MATNR": 15, "Tipo material": 14, "MAKTX": 40, "TEXTO_LARGO": 40,
         "MATKL": 10, "PRDHA": 12, "VOLUM": 10, "SPART": 8,
-        "EKGRP": 8,  "TAXIM": 8,  "E-Commerce": 14, "Trazable": 10, "Centros": 18, "KTGRM": 10,
+        "EKGRP": 8,  "TAXIM": 8,  "E-Commerce": 14, "Trazable": 10, "MSTAE": 8, "Centros": 18, "KTGRM": 10,
     }
 
     wb = openpyxl.Workbook()
