@@ -126,6 +126,7 @@ TIPOS_MATERIAL = {
         "TRAGR": "0001",
         "IPRKZ": "D",
         "MHDRZ": "270",
+        # SERIAL se resuelve por material según campo TRAZABLE (ver txt_generator)
         # vistas activas en centros logísticos
         "vistas_CL": ["B","V","C","MRP","P","A","WM","CO","MRPAREA"],
         # vistas activas en sucursales
@@ -252,6 +253,7 @@ TIPOS_MATERIAL = {
             {
                 "WERKS": "A120", "KOKRS": "AR01", "PRCTR": "AR01031200",
                 "MTVFP": "02", "LADGR": "0001", "KAUTB": "X",
+                "XCHPF": "X",
                 "ekgrp_opciones": OPCIONES["EKGRP_ZINS"],
                 "taxim_opciones": OPCIONES["TAXIM_FULL"],
             },
