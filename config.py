@@ -183,7 +183,7 @@ TIPOS_MATERIAL = {
         "EKWSL": "1",
         "TRAGR": "0001",
         "IPRKZ": "D",
-        "MHDRZ": "270",
+        "MHDRZ": "365",
         "vistas_CL":  ["B","V","C","MRP","P","A","WM","CO","MRPAREA"],
         "vistas_SUC": ["A"],
         "vistas_MOD": ["B","C"],
