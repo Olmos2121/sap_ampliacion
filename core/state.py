@@ -67,6 +67,7 @@ def inicializar_materiales(lineas: list, cfg: dict):
     campos_base = [
         "MATNR", "MAKTX", "MATKL", "PRDHA",
         "VOLUM", "TEXTO_LARGO", "SPART", "KTGRM",
+        "COSTO", "EAN",
     ]
     for campo in campos_base:
         st.session_state.materiales[campo] = [""] * n
@@ -132,7 +133,7 @@ def cargar_desde_excel_preparado(df: "pd.DataFrame", cfg: dict) -> tuple[bool, s
     st.session_state.n_mats = n
     st.session_state.centros_seleccionados = centros
 
-    campos_base = ["MATNR","MAKTX","MATKL","PRDHA","VOLUM","TEXTO_LARGO","SPART","KTGRM"]
+    campos_base = ["MATNR","MAKTX","MATKL","PRDHA","VOLUM","TEXTO_LARGO","SPART","KTGRM","COSTO","EAN"]
     for campo in campos_base:
         st.session_state.materiales[campo] = [""] * n
 
@@ -160,12 +161,14 @@ def cargar_desde_excel_preparado(df: "pd.DataFrame", cfg: dict) -> tuple[bool, s
     mapeo = {
         "MATNR":       "MATNR",
         "MAKTX":       "MAKTX",
-        "TEXTO_LARGO": "TEXTO_LARGO",
+        "TEXTO_LARGO": "MAKTX",
         "MATKL":       "MATKL",
         "PRDHA":       "PRDHA",
         "VOLUM":       "VOLUM",
         "SPART":       "SPART",
         "KTGRM":       "KTGRM",
+        "COSTO":       "COSTO",
+        "EAN":         "EAN",
     }
     for campo_estado, col_excel in mapeo.items():
         if col_excel in df.columns:

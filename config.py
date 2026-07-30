@@ -163,8 +163,8 @@ TIPOS_MATERIAL = {
         "CL_lugares": {"A130": ["0040","0041","0042","0043"], "A110": ["0010","0011","0020","0021","0022"]},
         "CL_area_planif": True,
         "CL_valoracion": [
-            {"BWKEY": "A130", "BKLAS": "3101", "VPRSV": "V", "VERPR": "20",  "STPRS": "", "PEINH": "1"},
-            {"BWKEY": "A110", "BKLAS": "3101", "VPRSV": "V", "VERPR": "200", "STPRS": "", "PEINH": "1"},
+            {"BWKEY": "A130", "BKLAS": "3101", "VPRSV": "V", "VERPR": "",  "STPRS": "", "PEINH": "1"},
+            {"BWKEY": "A110", "BKLAS": "3101", "VPRSV": "V", "VERPR": "", "STPRS": "", "PEINH": "1"},
         ],
         # ── Sucursales ─────────────────────────────────────────────────────
         "SUC_datos_centro": False,   # solo almacenamiento, sin campos extra
@@ -224,9 +224,9 @@ TIPOS_MATERIAL = {
         "CL_lugares": {"A130": ["0040","0041","0042","0043"], "A120": ["0030","0031"], "A110": ["0010","0011","0020","0021","0022"]},
         "CL_area_planif": True,
         "CL_valoracion": [
-            {"BWKEY": "A130", "BKLAS": "3300", "VPRSV": "V", "VERPR": "20",  "STPRS": "", "PEINH": "1"},
-            {"BWKEY": "A120", "BKLAS": "3300", "VPRSV": "V", "VERPR": "200", "STPRS": "", "PEINH": "1"},
-            {"BWKEY": "A110", "BKLAS": "3300", "VPRSV": "V", "VERPR": "200", "STPRS": "", "PEINH": "1"},
+            {"BWKEY": "A130", "BKLAS": "3300", "VPRSV": "V", "VERPR": "",  "STPRS": "", "PEINH": "1"},
+            {"BWKEY": "A120", "BKLAS": "3300", "VPRSV": "V", "VERPR": "", "STPRS": "", "PEINH": "1"},
+            {"BWKEY": "A110", "BKLAS": "3300", "VPRSV": "V", "VERPR": "", "STPRS": "", "PEINH": "1"},
         ],
         "SUC_datos_centro": False,
         "SUC_valoracion": False,
@@ -269,8 +269,8 @@ TIPOS_MATERIAL = {
         "CL_lugares": {"A130": ["0040","0041","0042","0043"], "A120": ["0030","0031"]},
         "CL_area_planif": False,
         "CL_valoracion": [
-            {"BWKEY": "A130", "BKLAS": "3400", "VPRSV": "V", "VERPR": "0.04", "STPRS": "", "PEINH": "1"},
-            {"BWKEY": "A120", "BKLAS": "3400", "VPRSV": "V", "VERPR": "0.04", "STPRS": "", "PEINH": "1"},
+            {"BWKEY": "A130", "BKLAS": "3400", "VPRSV": "V", "VERPR": "", "STPRS": "", "PEINH": "1"},
+            {"BWKEY": "A120", "BKLAS": "3400", "VPRSV": "V", "VERPR": "", "STPRS": "", "PEINH": "1"},
         ],
         "SUC_datos_centro": True,
         "SUC_ekgrp": "007",
@@ -387,9 +387,9 @@ TIPOS_MATERIAL = {
         "CL_lugares": {},
         "CL_area_planif": False,
         "CL_valoracion": [
-            {"BWKEY": "A110", "BKLAS": "3507", "VPRSV": "V", "VERPR": "1", "STPRS": "", "PEINH": "1"},
-            {"BWKEY": "A120", "BKLAS": "3507", "VPRSV": "V", "VERPR": "1", "STPRS": "", "PEINH": "1"},
-            {"BWKEY": "A130", "BKLAS": "3507", "VPRSV": "V", "VERPR": "1", "STPRS": "", "PEINH": "1"},
+            {"BWKEY": "A110", "BKLAS": "3507", "VPRSV": "V", "VERPR": "", "STPRS": "", "PEINH": "1"},
+            {"BWKEY": "A120", "BKLAS": "3507", "VPRSV": "V", "VERPR": "", "STPRS": "", "PEINH": "1"},
+            {"BWKEY": "A130", "BKLAS": "3507", "VPRSV": "V", "VERPR": "", "STPRS": "", "PEINH": "1"},
         ],
         "SUC_datos_centro": True,
         "SUC_ekgrp": "007",

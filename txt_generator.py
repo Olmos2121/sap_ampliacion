@@ -370,9 +370,11 @@ def gen_datos_valoracion(materiales: list[dict], cfg: dict, clave: str = "CL_val
     filas = []
     for m in materiales:
         for v in [x for x in val_cfg if centros is None or x["BWKEY"] in centros]:
+            # VERPR: si precio variable (V) y hay costo del material, usarlo; si no, el del config
+            verpr = m.get("COSTO", "") if v.get("VPRSV") == "V" and m.get("COSTO") else v.get("VERPR","")
             filas.append([
                 m["MATNR"], v["BWKEY"], v["BKLAS"], v["VPRSV"],
-                "ARS", v.get("VERPR",""), v.get("STPRS",""), v.get("PEINH","1"),
+                "ARS", verpr, v.get("STPRS",""), v.get("PEINH","1"),
             ])
 
     return _txt(h_nombres, h_tecnicos, filas)
