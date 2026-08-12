@@ -22,7 +22,7 @@ IVA_A_TAXIM = {
 }
 
 KTGRM_POR_ZMAT = {
-    "ZMED":  ["01", "02"],
+    "ZMED":  ["01"],
     "ZSER":  ["04", "05"],
     "ZNOM":  ["03"],
     "ZINS":  ["03"],

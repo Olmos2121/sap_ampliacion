@@ -12,7 +12,7 @@ OPCIONES = {
     "TAXIM_FULL":      [str(i) for i in range(1, 8)],             # 1-7
     "TAXIM_6":         [str(i) for i in range(1, 8)],             # 1-7 (mismo rango completo)
     "TAXIM_1":         [str(i) for i in range(1, 8)],             # 1-7
-    "KTGRM_ZMED":      ["01", "02"],
+    "KTGRM_ZMED":      ["01"],
     "KTGRM_ZNOM_ZINS": ["03"],
     "KTGRM_ZSER":      ["04", "05"],
     "KTGRM_ZCOM":      ["03"],
@@ -219,7 +219,7 @@ TIPOS_MATERIAL = {
             {"VKORG": "1001", "canales": ["10","20","30","40","50"], "DWERK": "A110", "MTPOS": "NORM"},
         ],
         "CL_ktgrm_opciones": OPCIONES["KTGRM_ZNOM_ZINS"],
-        "CL_fiscal": {"TAXM1": "0", "TAXM2": "0"},
+        "CL_fiscal": {"TAXM1": "1", "TAXM2": "0"},
         "CL_prevision": True,
         "CL_lugares": {"A130": ["0040","0041","0042","0043"], "A120": ["0030","0031"], "A110": ["0010","0011","0020","0021","0022"]},
         "CL_area_planif": True,
