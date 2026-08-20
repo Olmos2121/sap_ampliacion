@@ -92,7 +92,7 @@ Amplía un material nuevo a los centros logísticos (A110, A120, A130 según el 
 | XCHPF | X (gestión de lotes) |
 | MTPOS | NORM |
 | VOLEH | CM3 |
-| EKWSL | 1 |
+| EKWSL |  |
 | TRAGR | 0001 |
 | IPRKZ | D (caducidad) |
 | MHDRZ | 270 días |
@@ -283,7 +283,7 @@ Amplía un material nuevo a los centros logísticos (A110, A120, A130 según el 
 |---|---|
 | SPART | S4 |
 | MTPOS | LEIS |
-| EKWSL | 1 |
+| EKWSL |  |
 | EKGRP | 006 (fijo) |
 | MTVFP | KP |
 | KAUTB | X |
